@@ -25,13 +25,13 @@ app_ui <- function(request) {
         bg = bslib::bs_get_variables(bslib::bs_theme(preset = "cosmo"), "primary")
       ),
       bslib::nav_panel(
-        title = "Instruction",
+        title = "Introduction",
         mod_instructions_ui("instructions_1")
       ),
-      bslib::nav_panel(
-        title = "Methods",
-        mod_methods_ui("methods_1")
-      ),
+      # bslib::nav_panel(
+      #   title = "Methods",
+      #   mod_methods_ui("methods_1")
+      # ),
       bslib::nav_panel(
         title = "Rainfall Analysis",
         mod_rainfall_analysis_ui("rainfall_analysis_1")
