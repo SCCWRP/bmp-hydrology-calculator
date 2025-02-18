@@ -18,12 +18,12 @@ mod_infiltration_analysis_ui <- function(id) {
       span(strong("Step 1: Download Demo Data", bsicons::bs_icon("question-circle"))),
       "See demo data for the required format. Depth data provided in the demo data are in centimeters."
     ),
-    downloadButton(ns("download_demo_infiltration")),
+    shinyWidgets::downloadBttn(ns("download_demo_infiltration")),
     bslib::tooltip(
       span(strong("Step 2: Download Template", bsicons::bs_icon("question-circle"))),
       "Overwrite the template with your data."
     ),
-    downloadButton(ns("download_template_infiltration")),
+    shinyWidgets::downloadBttn(ns("download_template_infiltration")),
     strong("Step 3: Upload Data"),
     fileInput(
       ns("file"),
@@ -41,7 +41,7 @@ mod_infiltration_analysis_ui <- function(id) {
       span(strong("Step 5: Click Submit Button", bsicons::bs_icon("question-circle"))),
       "Check everything before you submit"
     ),
-    actionButton(ns("submit_infiltration"), "Submit Data"),
+    shinyWidgets::actionBttn(ns("submit_infiltration"), "Submit Data"),
     bslib::card_body(
       bslib::tooltip(
         span(strong("Constants for smoothing and regression", bsicons::bs_icon("question-circle"))),
@@ -122,7 +122,6 @@ mod_infiltration_analysis_ui <- function(id) {
 #' infiltration_analysis Server Functions
 #'
 #' @noRd
-# Infiltration Analysis Server Module
 mod_infiltration_analysis_server <- function(id) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
@@ -236,7 +235,7 @@ mod_infiltration_analysis_server <- function(id) {
             p("All data checks passed. You may close this window and proceed with the analysis.")),
           easyClose = FALSE,  # Force the user to click the custom button.
           footer = tagList(
-            actionButton(ns("close_success_modal"), "Close")
+            shinyWidgets::actionBttn(ns("close_success_modal"), "Close")
           )
         ))
         return(data_df)
@@ -305,13 +304,13 @@ mod_infiltration_analysis_server <- function(id) {
       local_df[smooth_cols] <- lapply(local_df[smooth_cols], function(x) as.numeric(as.character(x)))
 
       ## Reshape only the smoothed columns for plotting
-      df_long <- local_df %>%
-        dplyr::select(datetime, dplyr::starts_with("smooth_")) %>%
+      df_long <- local_df |>
+        dplyr::select(datetime, dplyr::starts_with("smooth_")) |>
         tidyr::pivot_longer(
           cols = -datetime,
           names_to = "piezometer",
           values_to = "depth"
-        ) %>%
+        ) |>
         dplyr::mutate(
           depth = as.numeric(as.character(depth)),
           # Remove the "smooth_" prefix to get the original piezometer name
