@@ -4,8 +4,6 @@
 #'
 #' @param id,input,output,session Internal parameters for {shiny}.
 #'
-#' @noRd
-#'
 #' @importFrom shiny NS tagList
 mod_rainfall_analysis_ui <- function(id) {
   ns <- NS(id)
@@ -116,14 +114,11 @@ mod_rainfall_analysis_ui <- function(id) {
 
 #' rainfall_analysis Server Functions
 #'
-#' @noRd
 # Server module for Rainfall Analysis
 #' rainfall_analysis Server Functions
 #'
-#' @noRd
 #' rainfall_analysis Server Functions
 #'
-#' @noRd
 mod_rainfall_analysis_server <- function(id) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
