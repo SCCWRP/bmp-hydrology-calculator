@@ -16,7 +16,7 @@ mod_infiltration_analysis_ui <- function(id) {
     class = "html-fill-container",
     bslib::tooltip(
       span(strong("Step 1: Download Demo Data", bsicons::bs_icon("question-circle"))),
-      "See demo data for the required format."
+      "See demo data for the required format. Depth data provided in the demo data are in centimeters."
     ),
     downloadButton(ns("download_demo_infiltration")),
     bslib::tooltip(
@@ -45,27 +45,36 @@ mod_infiltration_analysis_ui <- function(id) {
     bslib::card_body(
       bslib::tooltip(
         span(strong("Constants for smoothing and regression", bsicons::bs_icon("question-circle"))),
-        "These numbers are for informative only. They are not adjustable by the user for now."
+        "These numbers are for informative only. They are not adjustable by the user for now. Hover on the constants for more information."
       ),
       shinyjs::disabled(
-        numericInput(
-          inputId = ns("smoothing_window"),
-          label = "Smoothing Window",
-          value = 5
+        bslib::tooltip(
+          numericInput(
+            inputId = ns("smoothing_window"),
+            label = "Smoothing Window",
+            value = 5
+          ),
+          "5 minute window for median filter"
         )
       ),
       shinyjs::disabled(
-        numericInput(
-          inputId = ns("regression_window"),
-          label = "Regression Window",
-          value = 720
+        bslib::tooltip(
+          numericInput(
+            inputId = ns("regression_window"),
+            label = "Regression Window",
+            value = 720
+          ),
+          "12 hour window for fitted regression"
         )
       ),
       shinyjs::disabled(
-        numericInput(
-          inputId = ns("regression_threshold"),
-          label = "Regression Threshold",
-          value = 0.999
+        bslib::tooltip(
+          numericInput(
+            inputId = ns("regression_threshold"),
+            label = "Regression Threshold",
+            value = 0.999
+          ),
+          "Regression tolerance can be very high due to smoothness of fit"
         )
       )
     )
@@ -103,7 +112,6 @@ mod_infiltration_analysis_ui <- function(id) {
 
   )
 
-
   bslib::page_sidebar(
     sidebar = sidebar,
     main_panel
@@ -130,28 +138,29 @@ mod_infiltration_analysis_server <- function(id) {
     output$download_template_infiltration <- downloadHandler(
       filename = "template_infiltration.xlsx",
       content = function(file) {
-        file.copy("inst/extdata/template_infiltration.xlsx", file, overwrite = TRUE)
+        file.copy("inst/extdata/infiltration_template.xlsx", file, overwrite = TRUE)
       }
     )
-
     observeEvent(input$file, {
+      req(input$file)
       updateNavbarPage(session, "main_infiltration", selected = "Result")
     })
 
+    # --- Trigger file validation on Submit button click ---
+    observeEvent(input$submit_infiltration, {
+      validated_file()  # This forces the validated_file reactive to run.
+    })
 
-    # Reactive expression triggered by the submit button
-    analysis_result <- eventReactive(input$submit_infiltration, {
+    # --- Validated File Reactive Expression ---
+    validated_file <- eventReactive(input$submit_infiltration, {
       req(input$file)
-
-      ## FILE VALIDATION WITH MODAL MESSAGES ##
-      errors <- c()  # Initialize an error collector
-
-      # Retrieve sheet names from the uploaded Excel file
+      errors <- c()  # error collector
+      # Retrieve sheet names
       sheets <- readxl::excel_sheets(input$file$datapath)
       if (length(sheets) != 2 || !all(c("Instructions", "Data") %in% sheets)) {
         errors <- c(errors, "Excel file must have exactly two sheets: 'Instructions' and 'Data'.")
       }
-      # If any errors were collected, display them in a modal and abort processing
+
       if (length(errors) > 0) {
         showModal(modalDialog(
           title = "Data Check Errors",
@@ -161,76 +170,100 @@ mod_infiltration_analysis_server <- function(id) {
         ))
         return(NULL)
       }
-      # Read the Data sheet (safe because we just validated its existence)
-      data_df <- readxl::read_excel(input$file$datapath, sheet = "Data")
 
-      # Check for required column "datetime"
+      # Read the Data sheet (safe because the sheet names passed validation)
+      data_df <- readxl::read_excel(input$file$datapath, sheet = "Data", .name_repair = "minimal")
+
+      # Validate the required "datetime" column
       if (!"datetime" %in% names(data_df)) {
-        errors <- c(errors, "The Data sheet must have a column called 'datetime'.")
+        errors <- c(errors, "- The Data sheet must have a column called 'datetime'.")
       } else {
-        # Ensure no missing values in "datetime"
         if (any(is.na(data_df$datetime))) {
-          errors <- c(errors, "Column 'datetime' must have no missing values.")
+          errors <- c(errors, "- Column 'datetime' must have no missing values.")
         }
-        # Attempt to parse "datetime" as a timestamp.
         parsed_time <- as.POSIXct(data_df$datetime, tz = "UTC",
                                   tryFormats = c("%Y-%m-%d %H:%M:%S", "%Y-%m-%d"))
         if (all(is.na(parsed_time))) {
-          errors <- c(errors, "Column 'datetime' is not in a valid timestamp format.")
+          errors <- c(errors, "- Column 'datetime' is not in a valid timestamp format.")
         }
       }
 
-      # For all other columns, check that they are numeric and contain no missing values.
+      # Check for duplicate column names
+      duplicate_names <- names(data_df)[duplicated(names(data_df))]
+      if (length(duplicate_names) > 0) {
+        for (name in duplicate_names) {
+          errors <- c(errors, paste("- Duplicate column name found:", name))
+        }
+      }
+
+      # Validate all other columns: they must be numeric and have no missing values.
       other_cols <- setdiff(names(data_df), "datetime")
       for (col in other_cols) {
-        # If not numeric, attempt conversion.
         if (!is.numeric(data_df[[col]])) {
           converted <- suppressWarnings(as.numeric(data_df[[col]]))
           if (all(is.na(converted))) {
-            errors <- c(errors, paste("Column", col, "must be numeric."))
+            errors <- c(errors, paste("- Column", col, "must be numeric."))
           } else {
             data_df[[col]] <- converted
           }
         }
-        # Check for missing values.
         if (any(is.na(data_df[[col]]))) {
-          errors <- c(errors, paste("Column", col, "must have no missing values."))
+          errors <- c(errors, paste("- Column", col, "must have no missing values."))
         }
       }
-      # If there are any errors, show them in a modal and abort the analysis.
+
+
+
+      # If any errors were found, display them and abort.
       if (length(errors) > 0) {
         showModal(modalDialog(
-          title = "Data Check Errors",
-          paste(errors, collapse = "\n"),
+          title = "Data Errors Report",
+          tagList(
+            paste(errors, collapse = "\n"),
+            p("Please fix the errors and reupload. If you have any questions about the errors, contact us at ",
+              a("stormwater@sccwrp.org", href = "mailto:stormwater@sccwrp.org"),
+              " and provide a screenshot.")
+          ),
           easyClose = TRUE,
           footer = modalButton("Close")
         ))
         return(NULL)
       } else {
+        # SUCCESS modal with a custom Close button.
         showModal(modalDialog(
-          title = "Success",
-          "All data checks passed. You may close this window and proceed with the analysis.",
-          easyClose = TRUE,
-          footer = modalButton("Close")
+          title = "Data Errors Report",
+          tagList(
+            p("All data checks passed. You may close this window and proceed with the analysis.")),
+          easyClose = FALSE,  # Force the user to click the custom button.
+          footer = tagList(
+            actionButton(ns("close_success_modal"), "Close")
+          )
         ))
-
+        return(data_df)
       }
-      ## END FILE VALIDATION ##
+    })
+    observeEvent(input$close_success_modal, {
+      removeModal()
+    })
+    # --- Analysis Result Reactive Expression ---
+    analysis_result <- eventReactive(input$close_success_modal, {
+      data_df <- validated_file()
+      if (is.null(data_df)) return(NULL)
 
-      # Read the Data sheet again (or use data_df from validation)
+      # Prepare the data: convert datetime to character for the API
       df <- data_df
       df$datetime <- as.character(as.POSIXct(df$datetime, tz = "UTC"))
 
-      # Use constants from the (disabled) numericInputs in the UI
-      SMOOTHING_WINDOW    <- input$smoothing_window
-      REGRESSION_WINDOW   <- input$regression_window
+      # Use constants from the UI
+      SMOOTHING_WINDOW     <- input$smoothing_window
+      REGRESSION_WINDOW    <- input$regression_window
       REGRESSION_THRESHOLD <- input$regression_threshold
 
-      # Build the payload to send to the API
+      # Build the payload for the API
       payload <- list(
         data = df,
-        SMOOTHING_WINDOW    = SMOOTHING_WINDOW,
-        REGRESSION_WINDOW   = REGRESSION_WINDOW,
+        SMOOTHING_WINDOW     = SMOOTHING_WINDOW,
+        REGRESSION_WINDOW    = REGRESSION_WINDOW,
         REGRESSION_THRESHOLD = REGRESSION_THRESHOLD
       )
 
@@ -244,10 +277,17 @@ mod_infiltration_analysis_server <- function(id) {
                              httr::content_type_json())
 
       if (httr::status_code(response) != 200) {
-        showNotification(
-          paste("API request failed with status:", httr::status_code(response)),
-          type = "error"
-        )
+        showModal(modalDialog(
+          title = "Error",
+          tagList(
+            p(paste("API request failed with status:", httr::status_code(response))),
+            p("Contact us at ",
+              a("stormwater@sccwrp.org", href = "mailto:stormwater@sccwrp.org"),
+              " and provide a screenshot.")
+          ),
+          easyClose = TRUE,
+          footer = modalButton("Dismiss")
+        ))
         return(NULL)
       }
 
@@ -256,15 +296,13 @@ mod_infiltration_analysis_server <- function(id) {
 
       ## Process the returned dataframe
       local_df <- jsonlite::fromJSON(jsonlite::toJSON(result$dataframe), flatten = TRUE)
-      local_df$datetime <- as.POSIXct(as.character(local_df$datetime),
-                                      format = "%Y-%m-%dT%H:%M:%S")
+      local_df$datetime <- as.POSIXct(as.character(local_df$datetime), format = "%Y-%m-%dT%H:%M:%S")
       local_df$datetime <- format(local_df$datetime, "%Y-%m-%d %H:%M:%S")
       names(local_df) <- sub("\\..*$", "", names(local_df))
-      print(local_df)
+
       # Dynamically convert all columns starting with "smooth_" to numeric
       smooth_cols <- grep("^smooth_", names(local_df), value = TRUE)
       local_df[smooth_cols] <- lapply(local_df[smooth_cols], function(x) as.numeric(as.character(x)))
-
 
       ## Reshape only the smoothed columns for plotting
       df_long <- local_df %>%
@@ -280,7 +318,6 @@ mod_infiltration_analysis_server <- function(id) {
           piezometer = sub("^smooth_", "", piezometer)
         )
       df_long$datetime <- as.POSIXct(df_long$datetime, format = "%Y-%m-%d %H:%M:%S", tz = "GMT")
-
 
       ## Process best-fit line results from calc_results
       calc_results <- result$calc_results
@@ -309,19 +346,18 @@ mod_infiltration_analysis_server <- function(id) {
       }
 
       ## Create the plot using ggplot2
-      p <- ggplot() +
-        # Original smoothed data as solid lines
-        geom_line(
+      p <- ggplot2::ggplot() +
+        ggplot2::geom_line(
           data = df_long,
-          aes(x = datetime, y = depth, color = paste("Original data", piezometer)),
+          ggplot2::aes(x = datetime, y = depth, color = paste("Original data", piezometer)),
           size = 1.5
         ) +
-        # Overlay best-fit line as dashed lines, if available
         { if (nrow(best_fit_df) > 0)
-          geom_line(
+          ggplot2::geom_line(
             data = best_fit_df,
-            aes(x = datetime, y = best_fit, color = paste("Regression Fits", piezometer)),
-            linetype = "dashed", size = 1.5
+            ggplot2::aes(x = datetime, y = best_fit, color = paste("Regression Fits", piezometer)),
+            linetype = "dashed",
+            size = 1.5
           )
           else NULL } +
         ggplot2::labs(
@@ -348,6 +384,7 @@ mod_infiltration_analysis_server <- function(id) {
       }
       metrics_df <- do.call(rbind, metrics_list)
 
+      # Return a list with the plot and table
       list(plot = p, table = metrics_df)
     })
 
