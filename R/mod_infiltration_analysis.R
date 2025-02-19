@@ -32,16 +32,6 @@ mod_infiltration_analysis_ui <- function(id) {
       accept = ".xlsx"
     ) |>
       bslib::as_fillable_container(style = "overflow-y:auto", max_height = "200px"),
-    bslib::tooltip(
-      span(strong("Step 4: Enter the title of the graph", bsicons::bs_icon("question-circle"))),
-      "This is optional"
-    ),
-    textInput(ns("graph_title"), ""),
-    bslib::tooltip(
-      span(strong("Step 5: Click Submit Button", bsicons::bs_icon("question-circle"))),
-      "Check everything before you submit"
-    ),
-    shinyWidgets::actionBttn(ns("submit_infiltration"), "Submit Data"),
     bslib::card_body(
       bslib::tooltip(
         span(strong("Constants for smoothing and regression", bsicons::bs_icon("question-circle"))),
@@ -93,9 +83,29 @@ mod_infiltration_analysis_ui <- function(id) {
       title = "Result",
       bslib::layout_columns(
         col_widths = 12,
-        row_heights = c(1, 1),
+        row_heights = c(2, 1),
         bslib::card(
-          full_screen = TRUE,
+          full_screen = FALSE,
+          bslib::card_header(
+            bslib::layout_columns(
+              col_widths = c(2, 6, 4),
+              # Custom label placed in its own column
+              tags$label(
+                "Step 4: Choose a storm event",
+                `for` = ns("choose_rain_event_infiltration"),
+                class = "form-label",
+                style = "margin-top: 0.7rem;"  # adjust to vertically align if needed
+              ),
+              # Select input without a label
+              selectInput(
+                ns("choose_rain_event_infiltration"),
+                label = NULL,
+                choices = NULL
+              ),
+              # Submit button
+              shinyWidgets::actionBttn(ns("submit_infiltration"), "Submit")
+            )
+          ),
           bslib::card_body(
             plotOutput(ns("plot_infiltration"), height = "100%")
             #shinyjs::disabled(downloadButton(ns("download_plot"), "Download Plot"))
@@ -126,7 +136,7 @@ mod_infiltration_analysis_server <- function(id) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
-    # Download demo/template handlers
+    # Download demo/template handlers remain unchanged.
     output$download_demo_infiltration <- downloadHandler(
       filename = "demo_infiltration_data.xlsx",
       content = function(file) {
@@ -140,42 +150,47 @@ mod_infiltration_analysis_server <- function(id) {
         file.copy("inst/extdata/infiltration_template.xlsx", file, overwrite = TRUE)
       }
     )
+
+    # When a file is uploaded, read its sheet names and update the sheet dropdown.
     observeEvent(input$file, {
       req(input$file)
+      sheets <- readxl::excel_sheets(input$file$datapath)
+      # Remove the "Instructions" sheet if it exists.
+      sheets <- sheets[!sheets %in% "Instructions"]
+      updateSelectInput(session, "choose_rain_event_infiltration",
+                        choices = sheets, selected = sheets[1])
       updateNavbarPage(session, "main_infiltration", selected = "Result")
     })
 
     # --- Trigger file validation on Submit button click ---
     observeEvent(input$submit_infiltration, {
+      updateActionButton(
+        session,
+        inputId = "submit_infiltration",
+        label = "Resubmit"
+      )
       validated_file()  # This forces the validated_file reactive to run.
     })
 
     # --- Validated File Reactive Expression ---
     validated_file <- eventReactive(input$submit_infiltration, {
-      req(input$file)
+      req(input$file, input$choose_rain_event_infiltration)
       errors <- c()  # error collector
-      # Retrieve sheet names
+
+      # Get the list of sheets.
       sheets <- readxl::excel_sheets(input$file$datapath)
-      if (length(sheets) != 2 || !all(c("Instructions", "Data") %in% sheets)) {
-        errors <- c(errors, "Excel file must have exactly two sheets: 'Instructions' and 'Data'.")
+      if (!(input$choose_rain_event_infiltration %in% sheets)) {
+        errors <- c(errors, paste("Selected sheet", input$choose_rain_event_infiltration, "is not present in the file."))
       }
 
-      if (length(errors) > 0) {
-        showModal(modalDialog(
-          title = "Data Check Errors",
-          paste(errors, collapse = "\n"),
-          easyClose = TRUE,
-          footer = modalButton("Close")
-        ))
-        return(NULL)
-      }
+      # Read the selected sheet.
+      data_df <- readxl::read_excel(input$file$datapath,
+                                    sheet = input$choose_rain_event_infiltration,
+                                    .name_repair = "minimal")
 
-      # Read the Data sheet (safe because the sheet names passed validation)
-      data_df <- readxl::read_excel(input$file$datapath, sheet = "Data", .name_repair = "minimal")
-
-      # Validate the required "datetime" column
+      # Validate the required "datetime" column.
       if (!"datetime" %in% names(data_df)) {
-        errors <- c(errors, "- The Data sheet must have a column called 'datetime'.")
+        errors <- c(errors, "- The selected sheet must have a column called 'datetime'.")
       } else {
         if (any(is.na(data_df$datetime))) {
           errors <- c(errors, "- Column 'datetime' must have no missing values.")
@@ -187,7 +202,7 @@ mod_infiltration_analysis_server <- function(id) {
         }
       }
 
-      # Check for duplicate column names
+      # Check for duplicate column names.
       duplicate_names <- names(data_df)[duplicated(names(data_df))]
       if (length(duplicate_names) > 0) {
         for (name in duplicate_names) {
@@ -195,7 +210,7 @@ mod_infiltration_analysis_server <- function(id) {
         }
       }
 
-      # Validate all other columns: they must be numeric and have no missing values.
+      # Validate that all other columns are numeric and have no missing values.
       other_cols <- setdiff(names(data_df), "datetime")
       for (col in other_cols) {
         if (!is.numeric(data_df[[col]])) {
@@ -211,15 +226,13 @@ mod_infiltration_analysis_server <- function(id) {
         }
       }
 
-
-
       # If any errors were found, display them and abort.
       if (length(errors) > 0) {
         showModal(modalDialog(
           title = "Data Errors Report",
           tagList(
             paste(errors, collapse = "\n"),
-            p("Please fix the errors and reupload. If you have any questions about the errors, contact us at ",
+            p("Please fix the errors and reupload. If you have any questions, contact us at ",
               a("stormwater@sccwrp.org", href = "mailto:stormwater@sccwrp.org"),
               " and provide a screenshot.")
           ),
@@ -230,9 +243,10 @@ mod_infiltration_analysis_server <- function(id) {
       } else {
         # SUCCESS modal with a custom Close button.
         showModal(modalDialog(
-          title = "Data Errors Report",
+          title = "Data Check Success",
           tagList(
-            p("All data checks passed. You may close this window and proceed with the analysis.")),
+            p("All data checks passed. It may take a few minutes for the data to be processed. You may close this window now.")
+          ),
           easyClose = FALSE,  # Force the user to click the custom button.
           footer = tagList(
             shinyWidgets::actionBttn(ns("close_success_modal"), "Close")
@@ -241,24 +255,26 @@ mod_infiltration_analysis_server <- function(id) {
         return(data_df)
       }
     })
+
     observeEvent(input$close_success_modal, {
       removeModal()
     })
+
     # --- Analysis Result Reactive Expression ---
     analysis_result <- eventReactive(input$close_success_modal, {
       data_df <- validated_file()
       if (is.null(data_df)) return(NULL)
 
-      # Prepare the data: convert datetime to character for the API
+      # Prepare the data: convert datetime to character for the API.
       df <- data_df
       df$datetime <- as.character(as.POSIXct(df$datetime, tz = "UTC"))
 
-      # Use constants from the UI
+      # Use constants from the UI.
       SMOOTHING_WINDOW     <- input$smoothing_window
       REGRESSION_WINDOW    <- input$regression_window
       REGRESSION_THRESHOLD <- input$regression_threshold
 
-      # Build the payload for the API
+      # Build the payload for the API.
       payload <- list(
         data = df,
         SMOOTHING_WINDOW     = SMOOTHING_WINDOW,
@@ -268,7 +284,7 @@ mod_infiltration_analysis_server <- function(id) {
 
       payload_json <- jsonlite::toJSON(payload, auto_unbox = TRUE, POSIXt = "ISO8601")
 
-      # Define API endpoint and make the POST request
+      # Define API endpoint and make the POST request.
       url <- "https://nexus.sccwrp.org/bmp_hydrology/api/infiltration"
       response <- httr::POST(url,
                              body = payload_json,
@@ -290,20 +306,20 @@ mod_infiltration_analysis_server <- function(id) {
         return(NULL)
       }
 
-      # Parse the API response
+      # Parse the API response.
       result <- httr::content(response, "parsed")
 
-      ## Process the returned dataframe
+      ## Process the returned dataframe.
       local_df <- jsonlite::fromJSON(jsonlite::toJSON(result$dataframe), flatten = TRUE)
       local_df$datetime <- as.POSIXct(as.character(local_df$datetime), format = "%Y-%m-%dT%H:%M:%S")
       local_df$datetime <- format(local_df$datetime, "%Y-%m-%d %H:%M:%S")
       names(local_df) <- sub("\\..*$", "", names(local_df))
 
-      # Dynamically convert all columns starting with "smooth_" to numeric
+      # Convert columns starting with "smooth_" to numeric.
       smooth_cols <- grep("^smooth_", names(local_df), value = TRUE)
       local_df[smooth_cols] <- lapply(local_df[smooth_cols], function(x) as.numeric(as.character(x)))
 
-      ## Reshape only the smoothed columns for plotting
+      ## Reshape the smoothed columns for plotting.
       df_long <- local_df |>
         dplyr::select(datetime, dplyr::starts_with("smooth_")) |>
         tidyr::pivot_longer(
@@ -313,12 +329,12 @@ mod_infiltration_analysis_server <- function(id) {
         ) |>
         dplyr::mutate(
           depth = as.numeric(as.character(depth)),
-          # Remove the "smooth_" prefix to get the original piezometer name
+          # Remove the "smooth_" prefix to get the original piezometer name.
           piezometer = sub("^smooth_", "", piezometer)
         )
       df_long$datetime <- as.POSIXct(df_long$datetime, format = "%Y-%m-%d %H:%M:%S", tz = "GMT")
 
-      ## Process best-fit line results from calc_results
+      ## Process best-fit line results from calc_results.
       calc_results <- result$calc_results
       best_fit_df <- data.frame(
         datetime   = as.POSIXct(character()),
@@ -344,7 +360,7 @@ mod_infiltration_analysis_server <- function(id) {
         }
       }
 
-      ## Create the plot using ggplot2
+      ## Create the plot using ggplot2.
       p <- ggplot2::ggplot() +
         ggplot2::geom_line(
           data = df_long,
@@ -360,13 +376,13 @@ mod_infiltration_analysis_server <- function(id) {
           )
           else NULL } +
         ggplot2::labs(
-          title = input$graph_title,
+          title = input$choose_rain_event_infiltration,
           x = "Datetime",
           y = "Depth (cm)",
           color = "Piezometer"
         )
 
-      ## Prepare a table of metrics (e.g., infiltration rate, duration, average depth)
+      ## Prepare a table of metrics.
       metrics_list <- list()
       if (!is.null(calc_results)) {
         for (piez in names(calc_results)) {
@@ -383,82 +399,23 @@ mod_infiltration_analysis_server <- function(id) {
       }
       metrics_df <- do.call(rbind, metrics_list)
 
-      # Return a list with the plot and table
+      # Return a list with the plot and table.
       list(plot = p, table = metrics_df)
     })
 
-    # Render the plot in the UI
+    # Render the plot in the UI.
     output$plot_infiltration <- renderPlot({
-
       req(analysis_result())
       thematic::thematic_shiny(font = "auto")
-      # Extract the ggplot from your analysis result
-      p <- analysis_result()$plot
-      p
-      # # Define max_time_range. Adjust this as needed, for example, you might obtain it from analysis_result()
-      # max_time_range <- if (!is.null(analysis_result()$max_time_range)) {
-      #   analysis_result()$max_time_range
-      # } else {
-      #   24  # default value (in hours)
-      # }
-      #
-      # # Convert the ggplot to an interactive Plotly chart
-      # plotly::ggplotly(p, dynamicTicks = TRUE, source = "flow") |>
-      #   plotly::config(displayModeBar = FALSE)
-      #   # plotly::layout(
-      #   #   dragmode = FALSE,
-      #   #   xaxis = list(
-      #   #     rangeslider = list(visible = TRUE),
-      #   #     rangeselector = list(
-      #   #       buttons = list(
-      #   #         list(
-      #   #           count = 1,
-      #   #           label = "1 hr",
-      #   #           step = "hour",
-      #   #           stepmode = "backward",
-      #   #           visible = max_time_range > 1
-      #   #         ),
-      #   #         list(
-      #   #           count = 3,
-      #   #           label = "3 hr",
-      #   #           step = "hour",
-      #   #           stepmode = "backward",
-      #   #           visible = max_time_range > 3
-      #   #         ),
-      #   #         list(
-      #   #           count = 6,
-      #   #           label = "6 hr",
-      #   #           step = "hour",
-      #   #           stepmode = "backward",
-      #   #           visible = max_time_range > 6
-      #   #         ),
-      #   #         list(
-      #   #           count = 12,
-      #   #           label = "12 hr",
-      #   #           step = "hour",
-      #   #           stepmode = "backward",
-      #   #           visible = max_time_range > 12
-      #   #         ),
-      #   #         list(
-      #   #           count = 24,
-      #   #           label = "24 hr",
-      #   #           step = "hour",
-      #   #           stepmode = "backward",
-      #   #           visible = max_time_range > 24
-      #   #         ),
-      #   #         list(step = "all")
-      #   #       )
-      #   #     )
-      #   #   )
-      #   # )
+      analysis_result()$plot
     })
 
-    # Render the metrics table using DT
+    # Render the metrics table using DT.
     output$table_infiltration <- DT::renderDataTable({
       req(analysis_result())
       dt <- analysis_result()$table
 
-      # Define a dictionary (named vector) for column renaming.
+      # Rename columns using a mapping.
       col_mapping <- c(
         "Piezometer"        = "Piezometer",
         "Infiltration_rate" = "Infiltration Rate (cm/hr)",
@@ -466,7 +423,6 @@ mod_infiltration_analysis_server <- function(id) {
         "Average_depth"     = "Average Depth (cm)"
       )
 
-      # Rename columns using the mapping dictionary.
       names(dt) <- sapply(names(dt), function(x) {
         if (x %in% names(col_mapping)) {
           col_mapping[[x]]
@@ -486,14 +442,13 @@ mod_infiltration_analysis_server <- function(id) {
       )
     })
 
-
     observe({
       req(analysis_result())
       shinyjs::enable("download_plot")
       shinyjs::enable("download_table")
     })
 
-    # Download handler for the plot
+    # Download handler for the plot.
     output$download_plot <- downloadHandler(
       filename = function() {
         paste0("plot_", Sys.Date(), ".png")
@@ -505,29 +460,20 @@ mod_infiltration_analysis_server <- function(id) {
             fg = bslib::bs_get_variables(bslib::bs_theme(preset = "cosmo"), "secondary")
           )
         )
-
-        # Retrieve the current plot object from your reactive analysis
-        plot_obj <- analysis_result()$plot
-
-
-        # Save the plot to the specified file (using ggplot2::ggsave)
-        ggsave(file, plot = hydro_plot, device = "png", height = 6.94, width = 9.2302)
+        ggsave(file, plot = analysis_result()$plot, device = "png", height = 6.94, width = 9.2302)
       }
     )
 
-    # Download handler for the data table
+    # Download handler for the data table.
     output$download_table <- downloadHandler(
       filename = function() {
         paste0("data_table_", Sys.Date(), ".csv")
       },
       content = function(file) {
         dt <- analysis_result()$table
-        # Write the data table to a CSV file
         readr::write_csv(dt, file)
       }
     )
-
-
 
   })
 }

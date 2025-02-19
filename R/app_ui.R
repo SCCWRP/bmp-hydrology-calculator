@@ -19,7 +19,8 @@ app_ui <- function(request) {
     useBusyIndicators(),
     # Your application UI logic
     bslib::page_navbar(
-      title = "BMP Hydrology Calculator",
+      id = "main_navbar",
+      title = "BMP Hydrology Calculator 2.0",
       theme = bslib::bs_theme(preset='cosmo',font_scale = 1.3),
       navbar_options = bslib::navbar_options(
         bg = bslib::bs_get_variables(bslib::bs_theme(preset = "cosmo"), "primary")
