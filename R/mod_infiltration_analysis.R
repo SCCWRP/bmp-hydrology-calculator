@@ -91,10 +91,10 @@ mod_infiltration_analysis_ui <- function(id) {
               col_widths = c(2, 6, 4),
               # Custom label placed in its own column
               tags$label(
-                "Step 4: Choose a storm event",
+                "Step 4: Choose a storm event and click Submit. You can choose a different storm and click Resubmit",
                 `for` = ns("choose_rain_event_infiltration"),
                 class = "form-label",
-                style = "margin-top: 0.7rem;"  # adjust to vertically align if needed
+                style = "margin-top: 0.7rem; font-weight: bold;"  # Bold text
               ),
               # Select input without a label
               selectInput(
@@ -411,7 +411,7 @@ mod_infiltration_analysis_server <- function(id) {
     })
 
     # Render the metrics table using DT.
-    output$table_infiltration <- DT::renderDataTable({
+    output$table_infiltration <- DT::renderDT({
       req(analysis_result())
       dt <- analysis_result()$table
 

@@ -18,18 +18,18 @@ mod_rainfall_analysis_ui <- function(id) {
       span(strong("Step 1: Download Demo Data"), bsicons::bs_icon("question-circle")),
       "Demo Data"
     ),
-    shinyWidgets::downloadBttn(ns("download_demo_1min_rainfall"), "Download 1-min data"),
-    shinyWidgets::downloadBttn(ns("download_demo_timeoftips_rainfall"), "Download time of tips data"),
+    shinyWidgets::downloadBttn(ns("download_demo_1min_rainfall"), "Download 1-min demo data"),
+    shinyWidgets::downloadBttn(ns("download_demo_timeoftips_rainfall"), "Download time of tips demo data"),
 
     bslib::tooltip(
-      span(strong("Step 1: Download Template"), bsicons::bs_icon("question-circle")),
+      span(strong("Step 2: Download Template"), bsicons::bs_icon("question-circle")),
       "Overwrite the template with your data. See Data Requirements on the Instructions tab."
     ),
     shinyWidgets::downloadBttn(ns("download_template_rainfall"), "Download Template"),
 
     # Step 2: Upload Rainfall Data
     bslib::tooltip(
-      span(strong("Step 2: Upload Rainfall Data"), bsicons::bs_icon("question-circle")),
+      span(strong("Step 3: Upload Rainfall Data"), bsicons::bs_icon("question-circle")),
       "Upload rainfall data (.xlsx file)."
     ),
     fileInput(
@@ -41,7 +41,7 @@ mod_rainfall_analysis_ui <- function(id) {
 
     # Step 3: Choose a Rainfall Resolution
     bslib::tooltip(
-      span(strong("Step 3: Choose a Rainfall Resolution"), bsicons::bs_icon("question-circle")),
+      span(strong("Step 4: Choose a Rainfall Resolution"), bsicons::bs_icon("question-circle")),
       "Select the resolution for the rainfall data."
     ),
     selectInput(
@@ -192,8 +192,8 @@ mod_rainfall_analysis_server <- function(id) {
         dplyr::arrange(first_rain) %>%
         dplyr::mutate(
           first_rain = lubridate::as_datetime(first_rain),
-          last_rain  = lubridate::as_datetime(last_rain),
-          event      = dplyr::row_number()
+          last_rain = lubridate::as_datetime(last_rain),
+          event = dplyr::row_number()
         ) %>%
         dplyr::select(
           event,
@@ -214,7 +214,7 @@ mod_rainfall_analysis_server <- function(id) {
       data_input() %>%
         dplyr::mutate(
           cumsum = cumsum(rain),
-          hours  = as.numeric(difftime(datetime, min(datetime), units = "hours"))
+          hours = as.numeric(difftime(datetime, min(datetime), units = "hours"))
         )
     })
 
@@ -260,22 +260,22 @@ mod_rainfall_analysis_server <- function(id) {
         )
     })
 
-    output$rainfall_table <- DT::renderDataTable({
+    output$rainfall_table <- DT::renderDT({
       req(statistics())
       data <- statistics() %>%
         dplyr::select(-last_rain, -antecedent_dry_period, -peak_60_min_rainfall_intensity) %>%
         dplyr::mutate(
-          first_rain             = format(as.POSIXct(first_rain), format = "%Y-%m-%d %H:%M:%S"),
+          first_rain = format(as.POSIXct(first_rain), format = "%Y-%m-%d %H:%M:%S"),
           avg_rainfall_intensity = round(avg_rainfall_intensity, 2),
-          peak_5_min_rainfall_intensity  = round(peak_5_min_rainfall_intensity, 2),
+          peak_5_min_rainfall_intensity = round(peak_5_min_rainfall_intensity, 2),
           peak_10_min_rainfall_intensity = round(peak_10_min_rainfall_intensity, 2)
         )
       if (as.numeric(input$rainfall_resolution) == 0.1) {
         data <- data %>%
           dplyr::rename(
-            `Event ID`                        = event,
-            `Storm Date`                      = first_rain,
-            `Total Rainfall (P) (mm)`           = total_rainfall,
+            `Event ID` = event,
+            `Storm Date` = first_rain,
+            `Total Rainfall (P) (mm)` = total_rainfall,
             `Average Rainfall Intensity (mm/hr)` = avg_rainfall_intensity,
             `Peak 5-min Rainfall Intensity (mm/hr)` = peak_5_min_rainfall_intensity,
             `Peak 10-min Rainfall Intensity (mm/hr)` = peak_10_min_rainfall_intensity
@@ -283,10 +283,10 @@ mod_rainfall_analysis_server <- function(id) {
       } else {
         data <- data %>%
           dplyr::rename(
-            `Event ID`                          = event,
-            `Storm Date`                        = first_rain,
-            `Total Rainfall (P) (inches)`         = total_rainfall,
-            `Average Rainfall Intensity (inch/hr)`  = avg_rainfall_intensity,
+            `Event ID` = event,
+            `Storm Date` = first_rain,
+            `Total Rainfall (P) (inches)` = total_rainfall,
+            `Average Rainfall Intensity (inch/hr)` = avg_rainfall_intensity,
             `Peak 5-min Rainfall Intensity (inch/hr)` = peak_5_min_rainfall_intensity,
             `Peak 10-min Rainfall Intensity (inch/hr)`= peak_10_min_rainfall_intensity
           )
