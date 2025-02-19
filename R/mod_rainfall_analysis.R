@@ -8,18 +8,24 @@
 mod_rainfall_analysis_ui <- function(id) {
   ns <- NS(id)
 
-  # Sidebar remains the same as before (with steps 1-4)
   sidebar <- bslib::sidebar(
     width = "20%",
     open = "always",
     class = "html-fill-container",
 
-    # Step 1: Download Template
+    # Step 1: Download Demo Data
+    bslib::tooltip(
+      span(strong("Step 1: Download Demo Data"), bsicons::bs_icon("question-circle")),
+      "Demo Data"
+    ),
+    shinyWidgets::downloadBttn(ns("download_demo_1min_rainfall"), "Download 1-min data"),
+    shinyWidgets::downloadBttn(ns("download_demo_timeoftips_rainfall"), "Download time of tips data"),
+
     bslib::tooltip(
       span(strong("Step 1: Download Template"), bsicons::bs_icon("question-circle")),
       "Overwrite the template with your data. See Data Requirements on the Instructions tab."
     ),
-    downloadButton(ns("download_template"), "Download Template"),
+    shinyWidgets::downloadBttn(ns("download_template_rainfall"), "Download Template"),
 
     # Step 2: Upload Rainfall Data
     bslib::tooltip(
@@ -54,10 +60,9 @@ mod_rainfall_analysis_ui <- function(id) {
       width = "100%"
     ),
 
-    # Additional UI elements: notice and submit button
+    # Submit Button (disabled by default)
     bslib::card_body(
-      shiny::textOutput(ns("resubmit_notice")),
-      shinyjs::disabled(shinyWidgets::actionBttn(ns("submit"), "Submit"))
+      shinyjs::disabled(shinyWidgets::actionBttn(ns("submit_rainfall"), "Submit"))
     )
   )
 
@@ -85,8 +90,8 @@ mod_rainfall_analysis_ui <- function(id) {
             bslib::layout_columns(
               col_widths = c(6, 6),
               shinyWidgets::pickerInput(
-                inputId = "event_selector",
-                choices = c(1,2,3),
+                inputId = ns("event_selector_rainfall"),
+                choices = c(1, 2, 3),
                 multiple = FALSE
               ),
               shinyWidgets::actionBttn(ns("download_rainfall_plot"), "Download Plot")
@@ -103,7 +108,6 @@ mod_rainfall_analysis_ui <- function(id) {
     )
   )
 
-  # Combine sidebar and main panel into one page layout
   bslib::page_sidebar(
     sidebar = sidebar,
     main_panel
@@ -112,177 +116,227 @@ mod_rainfall_analysis_ui <- function(id) {
 
 
 
-#' rainfall_analysis Server Functions
-#'
+
 # Server module for Rainfall Analysis
-#' rainfall_analysis Server Functions
-#'
-#' rainfall_analysis Server Functions
-#'
+#' @import dplyr
 mod_rainfall_analysis_server <- function(id) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
-    # Enable the Submit button once a file is uploaded.
-    observe({
-      if (TRUE) {
-        shinyjs::enable("submit")
+    # ----------------------------------------------------------------------------
+    # 1. Enable the Submit Button When a File is Uploaded
+    # ----------------------------------------------------------------------------
+    observeEvent(input$rainfall_file, {
+      if (!is.null(input$rainfall_file)) {
+        shinyjs::enable("submit_rainfall")
       } else {
-        shinyjs::disable("submit")
+        shinyjs::disable("submit_rainfall")
       }
+      updateNavbarPage(session, "main_rainfall", selected = "Result")
     })
 
-    #### 1. Create Dummy Data Only After Submit is Clicked ####
-    dummy_info <- eventReactive(input$submit, {
-      # Create summary table for 3 events.
-      summary_table <- data.frame(
-        eventid = 1:3,
-        storm_date = as.POSIXct(c(Sys.time() + 3600, Sys.time() + 7200, Sys.time() + 10800)),  # Storm starts in 1h, 2h, 3h from now.
-        storm_end = as.POSIXct(c(Sys.time() + 3600 + 1800, Sys.time() + 7200 + 1800, Sys.time() + 10800 + 1800)),  # Each storm lasts 30 minutes.
-        total_rainfall = round(runif(3, 10, 50), 1),
-        average_rainfall_intensity = round(runif(3, 1, 5), 1),
-        peak_5min_rainfall_intensity = round(runif(3, 5, 20), 1),
-        peak_10min_rainfall_intensity = round(runif(3, 4, 18), 1),
-        peak_60_min_rainfall_intensity = round(runif(3, 2, 10), 1),
-        antecedent_dry_period = round(runif(3, 24, 72), 0)
+    # ----------------------------------------------------------------------------
+    # 2. Data Processing Triggered by the Submit Button
+    # ----------------------------------------------------------------------------
+
+    # Read in the uploaded rainfall data from the "rainfall_data" sheet.
+    data_input <- eventReactive(input$submit_rainfall, {
+      print("user click")
+      req(input$rainfall_file)
+
+      user_data <- readxl::read_excel(input$rainfall_file$datapath, sheet = "rainfall_data")
+      user_data <- user_data %>% dplyr::select(datetime, rain)
+      user_data
+    })
+
+    # Build the JSON payload for the API call.
+    payload <- eventReactive(input$submit_rainfall, {
+      req(data_input())
+      user_data <- data_input() %>% dplyr::arrange(datetime)
+      list(rain = user_data) %>%
+        jsonlite::toJSON(dataframe = "columns", POSIXt = "ISO8601", auto_unbox = TRUE)
+    })
+
+    # Call the API and return its response.
+    response <- eventReactive(input$submit_rainfall, {
+      req(payload())
+      showModal(modalDialog("Calculating...", footer = NULL))
+      res <- httr::POST(
+        "https://nexus.sccwrp.org/bmp_hydrology/api/rain",
+        body = payload(),
+        encode = "json",
+        httr::content_type_json()
       )
-
-      # Create time-series data for each event.
-      # For each event, generate data from 1 hour before storm_date to 1 hour after storm_end.
-      ts_data <- list()
-      for (i in 1:3) {
-        storm_start <- summary_table$storm_date[i]
-        storm_end <- summary_table$storm_end[i]
-        ts_start <- storm_start - 3600
-        ts_end <- storm_end + 3600
-        times <- seq(from = ts_start, to = ts_end, length.out = 100)
-        # Generate random rainfall values (scaled using total_rainfall).
-        values <- round(runif(100, min = 0, max = summary_table$total_rainfall[i] / 2), 2)
-        ts_data[[as.character(i)]] <- data.frame(datetime = times, value = values)
-      }
-      list(summary_table = summary_table, ts_data = ts_data)
+      content <- httr::content(res)
+      removeModal()
+      content
     })
 
-    # After dummy data is created, update the event selector to pick the first event.
-    observeEvent(dummy_info(), {
-      shinyWidgets::updatePickerInput(session, "event_selector", selected = 1)
-    })
-
-    #### 2. Reactives for Filtering Based on the Selected Event ####
-
-    # Reactive: Get the summary row for the selected event.
-    selected_summary <- reactive({
-      req(dummy_info())
-      req(input$event_selector)
-      dummy_info()$summary_table[dummy_info()$summary_table$eventid == as.numeric(input$event_selector), ]
-    })
-
-    # Reactive: Get the time-series data for the selected event and filter to only include data within the storm period.
-    selected_ts <- reactive({
-      req(dummy_info())
-      req(input$event_selector)
-      event_id <- as.character(input$event_selector)
-      df <- dummy_info()$ts_data[[event_id]]
-      sum_row <- selected_summary()
-      start_time <- sum_row$storm_date
-      end_time <- sum_row$storm_end
-      df[df$datetime >= start_time & df$datetime <= end_time, ]
-    })
-
-    #### 3. Plot and Table Outputs ####
-
-    # (a) Render the rainfall plot using ggplot2 with your specified theme.
-    output$rainfall_plot <- renderPlot({
-      req(selected_ts())
-      data <- selected_ts()
-      sum_row <- selected_summary()
-      print("in this")
-      plot_title <- paste("Rainfall Data for Event", sum_row$eventid)
-      p <- ggplot2::ggplot(data, ggplot2::aes(x = datetime, y = value)) +
-        ggplot2::geom_line(color = "blue") +
-        ggplot2::geom_point(color = "red") +
-        ggplot2::labs(
-          x = "Datetime",
-          y = "Rainfall",
-          title = plot_title
-        ) +
-        ggplot2::scale_x_datetime(
-          breaks = scales::breaks_pretty(n = 10),
-          labels = scales::label_date(format = "%m-%d %H:%M")
-        ) +
-        ggplot2::theme(
-          axis.text.x = ggplot2::element_text(angle = 90, vjust = 0.5),
-          legend.position = "top",
-          panel.grid.minor.x = ggplot2::element_blank(),
-          panel.grid.minor.y = ggplot2::element_blank()
-        )
-      p
-    })
-
-    # (b) Render the summary table (all events) using the DT package.
-    output$rainfall_table <- DT::renderDataTable({
-      req(dummy_info())
-      dummy_info()$summary_table
-    }, options = list(pageLength = 10))
-
-    # (c) Optionally, update a text output after submission.
-    output$resubmit_notice <- renderText({
-      req(dummy_info())
-      "Data has been submitted and is now displayed."
-    })
-
-    #### 4. Download Handler for the Plot ####
-
-    observe({
-      req(selected_ts())
-      output$download_rainfall_plot <- downloadHandler(
-        filename = function() {
-          paste0("RainfallPlot-", format(Sys.time(), "%Y-%m-%d-%H%M%S"), ".png")
-        },
-        content = function(file) {
-          # Apply a local thematic theme using a cosmo preset from bslib.
-          thematic::thematic_local_theme(
-            thematic::thematic_theme(
-              bg = bslib::bs_get_contrast(bslib::bs_theme(preset = "cosmo"), "secondary"),
-              fg = bslib::bs_get_variables(bslib::bs_theme(preset = "cosmo"), "secondary")
-            )
+    # Process the returned statistics.
+    statistics <- eventReactive(input$submit_rainfall, {
+      req(response())
+      response()$statistics %>%
+        tibble::as_tibble() %>%
+        tidyr::unnest(
+          cols = c(
+            first_rain,
+            last_rain,
+            total_rainfall,
+            avg_rainfall_intensity,
+            peak_5_min_rainfall_intensity,
+            peak_10_min_rainfall_intensity,
+            peak_60_min_rainfall_intensity,
+            antecedent_dry_period
           )
-          data <- selected_ts()
-          sum_row <- selected_summary()
-          plot_title <- paste("Rainfall Data for Event", sum_row$eventid)
-          p <- ggplot2::ggplot(data, ggplot2::aes(x = datetime, y = value)) +
-            ggplot2::geom_line(color = "blue") +
-            ggplot2::geom_point(color = "red") +
-            ggplot2::labs(
-              x = "Datetime",
-              y = "Rainfall",
-              title = plot_title
-            ) +
-            ggplot2::scale_x_datetime(
-              breaks = scales::breaks_pretty(n = 10),
-              labels = scales::label_date(format = "%m-%d %H:%M")
-            ) +
-            ggplot2::theme(
-              axis.text.x = ggplot2::element_text(angle = 90, vjust = 0.5),
-              legend.position = "top",
-              panel.grid.minor.x = ggplot2::element_blank(),
-              panel.grid.minor.y = ggplot2::element_blank()
-            )
-          ggplot2::ggsave(file, plot = p, device = "png", height = 6.94, width = 9.2302)
-        }
+        ) %>%
+        dplyr::arrange(first_rain) %>%
+        dplyr::mutate(
+          first_rain = lubridate::as_datetime(first_rain),
+          last_rain  = lubridate::as_datetime(last_rain),
+          event      = dplyr::row_number()
+        ) %>%
+        dplyr::select(
+          event,
+          first_rain,
+          last_rain,
+          total_rainfall,
+          avg_rainfall_intensity,
+          peak_5_min_rainfall_intensity,
+          peak_10_min_rainfall_intensity,
+          antecedent_dry_period,
+          peak_60_min_rainfall_intensity
+        )
+    })
+
+    # Prepare data for the cumulative rainfall plot.
+    plot_data <- eventReactive(input$submit_rainfall, {
+      req(data_input())
+      data_input() %>%
+        dplyr::mutate(
+          cumsum = cumsum(rain),
+          hours  = as.numeric(difftime(datetime, min(datetime), units = "hours"))
+        )
+    })
+
+    # Determine the rainfall unit based on the selected resolution.
+    rain_unit <- reactive({
+      if (as.numeric(input$rainfall_resolution) == 0.01) {
+        "inch"
+      } else {
+        "mm"
+      }
+    })
+
+    # ----------------------------------------------------------------------------
+    # 3. Output: Plot and DataTable
+    # ----------------------------------------------------------------------------
+
+    output$rainfall_plot <- renderPlot({
+      req(plot_data())
+      df <- plot_data()
+
+      # Filter data based on the selected event (using event_selector_rainfall).
+      ev <- as.numeric(input$event_selector_rainfall)
+      if (!is.null(statistics()) && ev %in% statistics()$event) {
+        event_times <- statistics() %>% dplyr::filter(event == ev)
+        df <- df %>% dplyr::filter(
+          datetime >= event_times$first_rain,
+          datetime <= event_times$last_rain
+        )
+      }
+
+      ggplot2::ggplot(df, ggplot2::aes(x = hours, y = cumsum)) +
+        ggplot2::geom_line() +
+        ggplot2::labs(
+          x = "Elapsed hours from the first rain tip",
+          y = paste("Cumulative rainfall (", rain_unit(), ")", sep = ""),
+          title = input$title
+        ) +
+        ggplot2::theme_minimal() +
+        ggplot2::theme(
+          axis.text  = ggplot2::element_text(size = 12),
+          axis.title = ggplot2::element_text(size = 14, face = "bold"),
+          plot.title = ggplot2::element_text(size = 16, face = "bold")
+        )
+    })
+
+    output$rainfall_table <- DT::renderDataTable({
+      req(statistics())
+      data <- statistics() %>%
+        dplyr::select(-last_rain, -antecedent_dry_period, -peak_60_min_rainfall_intensity) %>%
+        dplyr::mutate(
+          first_rain             = format(as.POSIXct(first_rain), format = "%Y-%m-%d %H:%M:%S"),
+          avg_rainfall_intensity = round(avg_rainfall_intensity, 2),
+          peak_5_min_rainfall_intensity  = round(peak_5_min_rainfall_intensity, 2),
+          peak_10_min_rainfall_intensity = round(peak_10_min_rainfall_intensity, 2)
+        )
+      if (as.numeric(input$rainfall_resolution) == 0.1) {
+        data <- data %>%
+          dplyr::rename(
+            `Event ID`                        = event,
+            `Storm Date`                      = first_rain,
+            `Total Rainfall (P) (mm)`           = total_rainfall,
+            `Average Rainfall Intensity (mm/hr)` = avg_rainfall_intensity,
+            `Peak 5-min Rainfall Intensity (mm/hr)` = peak_5_min_rainfall_intensity,
+            `Peak 10-min Rainfall Intensity (mm/hr)` = peak_10_min_rainfall_intensity
+          )
+      } else {
+        data <- data %>%
+          dplyr::rename(
+            `Event ID`                          = event,
+            `Storm Date`                        = first_rain,
+            `Total Rainfall (P) (inches)`         = total_rainfall,
+            `Average Rainfall Intensity (inch/hr)`  = avg_rainfall_intensity,
+            `Peak 5-min Rainfall Intensity (inch/hr)` = peak_5_min_rainfall_intensity,
+            `Peak 10-min Rainfall Intensity (inch/hr)`= peak_10_min_rainfall_intensity
+          )
+      }
+      DT::datatable(
+        data,
+        options = list(searching = FALSE),
+        rownames = FALSE,
+        caption = htmltools::tags$caption(
+          style = 'caption-side: top; text-align: center; color: black; font-size: 200%;',
+          'Statistics of the rainfall data'
+        )
       )
     })
 
+    # ----------------------------------------------------------------------------
+    # 4. Download Handlers
+    # ----------------------------------------------------------------------------
+    output$download_demo_1min_rainfall <- downloadHandler(
+      filename = "demo_rainfall_1min_data.xlsx",
+      content = function(file) {
+        file.copy("inst/extdata/demo_rainfall_1min_data.xlsx", file, overwrite = TRUE)
+      }
+    )
+
+    output$download_demo_timeoftips_rainfall <- downloadHandler(
+      filename = "demo_rainfall_timeoftips_data.xlsx",
+      content = function(file) {
+        file.copy("inst/extdata/demo_rainfall_timeoftips_data.xlsx", file, overwrite = TRUE)
+      }
+    )
+
+    output$download_template_rainfall <- downloadHandler(
+      filename = "rainfall_template.xlsx",
+      content = function(file) {
+        file.copy("rainfall_template.xlsx", file, overwrite = TRUE)
+      }
+    )
+
+    output$download_rainfall_plot <- downloadHandler(
+      filename = function() {
+        "downloaded_plot.png"
+      },
+      content = function(file) {
+        ggplot2::ggsave(
+          file,
+          plot = plot_data() + ggplot2::coord_cartesian(expand = FALSE),
+          device = "png"
+        )
+      }
+    )
   })
 }
-
-
-
-
-
-
-## To be copied in the UI
-# mod_rainfall_analysis_ui("rainfall_analysis_1")
-
-## To be copied in the server
-# mod_rainfall_analysis_server("rainfall_analysis_1")
