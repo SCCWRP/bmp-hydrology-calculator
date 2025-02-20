@@ -74,10 +74,12 @@ mod_infiltration_analysis_ui <- function(id) {
     id = ns("main_infiltration"),
     padding = 0,
     bslib::nav_panel(
-      title = "Instruction"
+      title = "Instruction",
+      mod_infiltration_instruction_ui("infiltration_instruction")
     ),
     bslib::nav_panel(
-      title = "Method"
+      title = "Method",
+      mod_infiltration_method_ui("infiltration_method")
     ),
     bslib::nav_panel(
       title = "Result",

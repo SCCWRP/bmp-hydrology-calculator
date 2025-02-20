@@ -6,7 +6,7 @@
 #'
 #' @noRd
 #'
-#' @import shiny NS tagList
+#' @importFrom shiny NS tagList
 mod_flow_analysis_ui <- function(id) {
   ns <- NS(id)
 
@@ -90,10 +90,12 @@ mod_flow_analysis_ui <- function(id) {
   main_panel <- bslib::page_navbar(
     id = ns("main_flow"),
     bslib::nav_panel(
-      title = "Instruction"
+      title = "Instruction",
+      mod_flow_instruction_ui("flow_instruction")
     ),
     bslib::nav_panel(
-      title = "Method"
+      title = "Method",
+      mod_flow_method_ui("flow_method")
     ),
     bslib::nav_panel(
       title = "Result",
@@ -107,18 +109,21 @@ mod_flow_analysis_ui <- function(id) {
           ),
           bslib::card_footer(
             bslib::layout_columns(
-              col_widths = c(6, 6),
-              shinyWidgets::pickerInput(
-                inputId = ns("event_selector_flow"),
-                choices = c(1, 2, 3),
-                multiple = FALSE
+              col_widths = c(2, 6, 4),
+              tags$label(
+                "Choose a flow type:",
+                style = "margin-top: 0.7rem; font-weight: bold;"  # Bold text
               ),
               shinyWidgets::pickerInput(
                 inputId = ns("choose_graph_flow"),
-                label = "Choose a flow type:",
                 choices = NULL,
                 selected = NULL,
                 multiple = TRUE
+              ),
+              shinyWidgets::actionBttn(
+                inputId = ns("download_flow_plot"),
+                label = "Download Plot",
+                icon = bsicons::bs_icon("download")
               )
             )
           )
@@ -126,6 +131,21 @@ mod_flow_analysis_ui <- function(id) {
         bslib::card(
           bslib::card_body(
             DT::dataTableOutput(ns("flow_table"))
+          ),
+          bslib::card_footer(
+            bslib::layout_columns(
+              col_widths = c(6, 6),
+              shinyWidgets::actionBttn(
+                inputId = ns("download_flow_table"),
+                label = "Download Table",
+                icon = bsicons::bs_icon("download")
+              ),
+              shinyWidgets::actionBttn(
+                inputId = ns("download_flow_table_smc"),
+                label = "Download Table in SMC Format",
+                icon = bsicons::bs_icon("download")
+              )
+            )
           )
         )
       )
@@ -142,93 +162,69 @@ mod_flow_analysis_ui <- function(id) {
 #' flow_analysis Server Functions
 #'
 #' @noRd
-#' @import dplyr ggplo2
+#' @import dplyr ggplot2
 mod_flow_analysis_server <- function(id) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
     read_excel_allsheets <- function(filename) {
       sheets <- readxl::excel_sheets(filename)
-      # Read each sheet and store them in a named list.
       setNames(lapply(sheets, function(sheet) readxl::read_excel(filename, sheet = sheet)), sheets)
     }
 
     observeEvent(input$flow_file, {
       req(input$flow_file)
 
-      updateNavbarPage(session, "main_flow", selected = "Result")
-
-      # Read the "inflow1" and "outflow" sheets from the uploaded file.
       inflow_data <- readxl::read_excel(input$flow_file$datapath, sheet = "inflow1")
       outflow_data <- readxl::read_excel(input$flow_file$datapath, sheet = "outflow")
 
-      # Update the start date using the minimum date from the inflow sheet.
       min_inflow_date <- min(as.Date(inflow_data$datetime))
-      print(min_inflow_date)
       max_inflow_date <- max(as.Date(inflow_data$datetime))
       shinyWidgets::updateAirDateInput(session, "start_date_flow",
-                      value = min_inflow_date,
-                      options = list(minDate = min_inflow_date, maxDate = max_inflow_date))
+                                       value = min_inflow_date,
+                                       options = list(minDate = min_inflow_date, maxDate = max_inflow_date))
 
-
-      # Update the end date using the maximum date from the outflow sheet.
       min_outflow_date <- min(as.Date(outflow_data$datetime))
       max_outflow_date <- max(as.Date(outflow_data$datetime))
       shinyWidgets::updateAirDateInput(session, "end_date_flow",
-                      value = max_outflow_date,
-                      options = list(minDate = min_outflow_date, maxDate = max_outflow_date))
+                                       value = max_outflow_date,
+                                       options = list(minDate = min_outflow_date, maxDate = max_outflow_date))
 
-      # Update the start time using the minimum time from the inflow sheet.
       start_time <- format(min(as.POSIXct(inflow_data$datetime)), "%H:%M:%S")
       shinyWidgets::updateTimeInput(session, "start_hour_flow", value = hms::as_hms(start_time))
 
-      # Update the end time using the maximum time from the outflow sheet.
       end_time <- format(max(as.POSIXct(outflow_data$datetime)), "%H:%M:%S")
       shinyWidgets::updateTimeInput(session, "end_hour_flow", value = hms::as_hms(end_time))
     })
 
+    observeEvent(input$submit_flow, {
+      updateNavbarPage(session, "main_flow", selected = "Result")
+      showModal(modalDialog("Calculating...", footer = NULL))
+    })
 
-
-    # --------------------------------------------------------------------------
-    # 1. Data Processing Triggered by the Submit Button
-    # --------------------------------------------------------------------------
     # --------------------------------------------------------------------------
     # 1. Data Processing Triggered by the Submit Button
     # --------------------------------------------------------------------------
     data_input <- eventReactive(input$submit_flow, {
       req(input$flow_file)
-      # Read all sheets from the uploaded file.
       all_data <- read_excel_allsheets(input$flow_file$datapath)
-      # Remove any empty sheets.
       all_data <- Filter(function(df) nrow(df) > 0, all_data)
-
-      # Build the start and end datetime objects from user inputs.
       start <- as.POSIXct(paste(input$start_date_flow, as.character(input$start_hour_flow)))
       end   <- as.POSIXct(paste(input$end_date_flow, as.character(input$end_hour_flow)))
-
-
-      # For each sheet, convert the 'datetime' column and filter by the selected time range.
       lapply(all_data, function(df) {
         df <- df %>% dplyr::mutate(datetime = as.POSIXct(datetime))
         dplyr::filter(df, datetime >= start, datetime <= end)
       })
     })
 
-    # Build the JSON payload for the API call.
     payload <- eventReactive(input$submit_flow, {
       req(data_input())
-      # Get all sheets from the file (data_input() returns a named list)
       sheets <- data_input()
-
-      # Define the required sheets
       required_sheets <- c("inflow1", "inflow2", "bypass", "outflow")
-
-      # Build a payload list using only the required sheets
       payload_list <- list()
       for(sheet in required_sheets) {
         if(sheet %in% names(sheets)) {
           df <- sheets[[sheet]]
-          # Select only the relevant columns, assuming the data frame has columns "datetime" and "flow"
           df <- df %>% dplyr::select(datetime, flow) %>% dplyr::arrange(datetime)
           payload_list[[sheet]] <- list(
             datetime = df$datetime,
@@ -237,16 +233,11 @@ mod_flow_analysis_server <- function(id) {
           )
         }
       }
-
-      # Convert the list to JSON. Using auto_unbox ensures that single values aren't put in arrays.
       jsonlite::toJSON(payload_list, dataframe = "columns", POSIXt = "ISO8601", auto_unbox = TRUE)
     })
 
-
-    # Call the Flow API.
     response <- eventReactive(input$submit_flow, {
       req(payload())
-      showModal(modalDialog("Calculating...", footer = NULL))
       res <- httr::POST(
         "https://nexus.sccwrp.org/bmp_hydrology/api/flow",
         body = payload(),
@@ -255,13 +246,9 @@ mod_flow_analysis_server <- function(id) {
       )
       content <- httr::content(res)
       removeModal()
-      print(content)
       content
     })
 
-
-
-    # Process the returned statistics.
     statistics <- eventReactive(input$submit_flow, {
       req(response())
       my_content <- response()$statistics
@@ -307,29 +294,35 @@ mod_flow_analysis_server <- function(id) {
     })
 
     # --------------------------------------------------------------------------
+    # **New: Update the Flow Type Picker Dynamically**
+    # --------------------------------------------------------------------------
+    observe({
+      req(plot_data())
+      flow_types <- unique(plot_data()$flow_type)
+      shinyWidgets::updatePickerInput(session, "choose_graph_flow",
+                                      choices = flow_types,
+                                      selected = flow_types)
+    })
+
+    # --------------------------------------------------------------------------
     # 2. Outputs: Plot and Table
     # --------------------------------------------------------------------------
-
-    # Render the hydrograph.
     output$flow_plot <- renderPlot({
       req(plot_data())
       df <- plot_data()
+      # Filter based on the selected flow types.
+      if (!is.null(input$choose_graph_flow) && length(input$choose_graph_flow) > 0) {
+        df <- df %>% dplyr::filter(flow_type %in% input$choose_graph_flow)
+      }
       ggplot2::ggplot(df, ggplot2::aes(x = datetime, y = flow, colour = flow_type)) +
-        ggplot2::geom_line() +
+        ggplot2::geom_line(size = 1.5) +
         ggplot2::labs(
           x = "Datetime",
           y = paste("Flow rate (", input$flow_units_flow, ")", sep = ""),
           title = input$graph_title_flow
-        ) +
-        ggplot2::theme_minimal() +
-        ggplot2::theme(
-          axis.text  = ggplot2::element_text(size = 12),
-          axis.title = ggplot2::element_text(size = 14, face = "bold"),
-          plot.title = ggplot2::element_text(size = 16, face = "bold")
         )
     })
 
-    # Render a table of the flow statistics.
     output$flow_table <- DT::renderDT({
       req(statistics())
       data <- statistics() %>%
@@ -342,15 +335,18 @@ mod_flow_analysis_server <- function(id) {
         )
       DT::datatable(
         data,
-        options = list(searching = FALSE),
-        rownames = FALSE
+        rownames = FALSE,
+        options = list(
+          dom = 't',
+          paging = FALSE,
+          ordering = FALSE
+        )
       )
     })
 
     # --------------------------------------------------------------------------
     # 3. Download Handlers
     # --------------------------------------------------------------------------
-
     output$download_demo_flow <- downloadHandler(
       filename = "demo_flowrate_data.xlsx",
       content = function(file) {
@@ -377,7 +373,6 @@ mod_flow_analysis_server <- function(id) {
         )
       }
     )
-
   })
 }
 

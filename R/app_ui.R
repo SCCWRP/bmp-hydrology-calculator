@@ -26,8 +26,8 @@ app_ui <- function(request) {
         bg = bslib::bs_get_variables(bslib::bs_theme(preset = "cosmo"), "primary")
       ),
       bslib::nav_panel(
-        title = "Introduction",
-        mod_instructions_ui("instructions_1")
+        title = "About",
+        mod_about_ui("about_1")
       ),
       # bslib::nav_panel(
       #   title = "Methods",
