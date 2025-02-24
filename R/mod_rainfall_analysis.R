@@ -13,23 +13,9 @@ mod_rainfall_analysis_ui <- function(id) {
     open = "always",
     class = "html-fill-container",
 
-    # Step 1: Download Demo Data
-    bslib::tooltip(
-      span(strong("Step 1: Download Demo Data"), bsicons::bs_icon("question-circle")),
-      "Demo Data"
-    ),
-    shinyWidgets::downloadBttn(ns("download_demo_1min_rainfall"), "Download 1-min demo data"),
-    shinyWidgets::downloadBttn(ns("download_demo_timeoftips_rainfall"), "Download time of tips demo data"),
-
-    bslib::tooltip(
-      span(strong("Step 2: Download Template"), bsicons::bs_icon("question-circle")),
-      "Overwrite the template with your data. See Data Requirements on the Instructions tab."
-    ),
-    shinyWidgets::downloadBttn(ns("download_template_rainfall"), "Download Template"),
-
     # Step 2: Upload Rainfall Data
     bslib::tooltip(
-      span(strong("Step 3: Upload Rainfall Data"), bsicons::bs_icon("question-circle")),
+      span(strong("Step 1: Upload Data"), bsicons::bs_icon("question-circle")),
       "Upload rainfall data (.xlsx file)."
     ),
     fileInput(
@@ -41,7 +27,7 @@ mod_rainfall_analysis_ui <- function(id) {
 
     # Step 3: Choose a Rainfall Resolution
     bslib::tooltip(
-      span(strong("Step 4: Choose a Rainfall Resolution"), bsicons::bs_icon("question-circle")),
+      span(strong("Step 2: Choose a Rainfall Resolution"), bsicons::bs_icon("question-circle")),
       "Select the resolution for the rainfall data."
     ),
     selectInput(
@@ -345,30 +331,6 @@ mod_rainfall_analysis_server <- function(id) {
         )
       )
     })
-
-    # ----------------------------------------------------------------------------
-    # 4. Download Handlers
-    # ----------------------------------------------------------------------------
-    output$download_demo_1min_rainfall <- downloadHandler(
-      filename = "demo_rainfall_1min_data.xlsx",
-      content = function(file) {
-        file.copy("inst/extdata/demo_rainfall_1min_data.xlsx", file, overwrite = TRUE)
-      }
-    )
-
-    output$download_demo_timeoftips_rainfall <- downloadHandler(
-      filename = "demo_rainfall_timeoftips_data.xlsx",
-      content = function(file) {
-        file.copy("inst/extdata/demo_rainfall_timeoftips_data.xlsx", file, overwrite = TRUE)
-      }
-    )
-
-    output$download_template_rainfall <- downloadHandler(
-      filename = "rainfall_template.xlsx",
-      content = function(file) {
-        file.copy("rainfall_template.xlsx", file, overwrite = TRUE)
-      }
-    )
 
     output$download_rainfall_plot <- downloadHandler(
       filename = function() {

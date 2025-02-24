@@ -23,10 +23,10 @@ Infiltration data should be copied and pasted from your datasheet into the downl
 
 **Data Requirements**
 The uploaded Excel spreadsheet must conform to the following requirements:
-1. Infiltration must be reported in consistent units (e.g., in/hr, mm/hr).
+1. Infiltration must be reported in cm/hr.
 2. The timestamp should be in 24-hour format (mm/dd/yy hh:mm:ss).
-3. Each tab must contain exactly two columns, one for the sample timestamps data and one for the associated values.
-4. The column names and the tab names must not be changed from the template.
+3. Each tab must contain a column called datetime
+4. You can put the data for multiple sensors in other columns, but you need to make sure the column names are unique, and they need to contain numeric data
 "
 
   bslib::card(
@@ -37,6 +37,44 @@ The uploaded Excel spreadsheet must conform to the following requirements:
           fragment.only = TRUE
         )
       )
+    ),
+    bslib::card_footer(
+      bslib::layout_columns(
+        col_widths = c(6, 6),
+        shinyWidgets::downloadBttn(
+          outputId = ns("download_demo_infiltration"),
+          label = "Download Demo Data"
+        ),
+        shinyWidgets::downloadBttn(
+          outputId = ns("download_template_infiltration"),
+          label = "Download Template"
+        )
+      )
     )
   )
 }
+#' @importFrom shiny NS tagList HTML
+mod_infiltration_instruction_server <- function(id) {
+  moduleServer(
+    id,
+    function(input, output, session) {
+      output$download_demo_infiltration <- downloadHandler(
+        filename = "demo_infiltration_data.xlsx",
+        content = function(file) {
+          file.copy("inst/extdata/demo_infiltration_data.xlsx", file, overwrite = TRUE)
+        }
+      )
+
+      output$download_template_infiltration <- downloadHandler(
+        filename = "template_infiltration.xlsx",
+        content = function(file) {
+          file.copy("inst/extdata/infiltration_template.xlsx", file, overwrite = TRUE)
+        }
+      )
+    }
+  )
+}
+
+
+
+

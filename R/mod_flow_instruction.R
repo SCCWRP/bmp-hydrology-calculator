@@ -6,12 +6,8 @@
 #'
 #' @noRd
 #'
-#' @importFrom shiny NS tagList HTML
-mod_flow_instruction_ui <- function(id) {
-  ns <- NS(id)
-
-  # Flow-specific markdown text
-  flow_markdown_text <- "
+# Flow-specific markdown text
+flow_markdown_text <- "
 Using this Application (Flow)
 It is required that the column names and tab names in the templates remain unchanged.
 
@@ -28,7 +24,9 @@ The uploaded Excel spreadsheet must conform to the following requirements:
 3. Each tab must contain exactly two columns, one for the sample timestamps data and one for the associated values.
 4. The column names and the tab names must not be changed from the template.
 "
-
+#' @importFrom shiny NS tagList HTML
+mod_flow_instruction_ui <- function(id) {
+  ns <- NS(id)
   bslib::card(
     bslib::card_body(
       HTML(
@@ -37,6 +35,35 @@ The uploaded Excel spreadsheet must conform to the following requirements:
           fragment.only = TRUE
         )
       )
+    ),
+    bslib::card_footer(
+      bslib::layout_columns(
+        col_widths = c(6, 6),
+        shinyWidgets::downloadBttn(ns("download_demo_flow"), "Download Flow Demo Data"),
+        shinyWidgets::downloadBttn(ns("download_template_flow"), "Download Flow Template")
+      )
     )
   )
 }
+
+mod_flow_instruction_server <- function(id) {
+  moduleServer(
+    id,
+    function(input, output, session) {
+      output$download_demo_flow <- downloadHandler(
+        filename = "demo_flowrate_data.xlsx",
+        content = function(file) {
+          file.copy("inst/extdata/demo_flowrate_data.xlsx", file, overwrite = TRUE)
+        }
+      )
+      output$download_template_flow <- downloadHandler(
+        filename = "flow_template.xlsx",
+        content = function(file) {
+          file.copy("inst/extdata/flow_template.xlsx", file, overwrite = TRUE)
+        }
+      )
+    }
+  )
+}
+
+

@@ -6,7 +6,6 @@
 #' @noRd
 app_ui <- function(request) {
   ui <- tagList(
-    # Leave this function for adding external resources
     golem_add_external_resources(),
     shinyjs::useShinyjs(),
     div(HTML(
@@ -17,7 +16,6 @@ app_ui <- function(request) {
        </script >"
     )),
     useBusyIndicators(),
-    # Your application UI logic
     bslib::page_navbar(
       id = "main_navbar",
       title = "BMP Hydrology Calculator 2.0",
@@ -29,10 +27,6 @@ app_ui <- function(request) {
         title = "About",
         mod_about_ui("about_1")
       ),
-      # bslib::nav_panel(
-      #   title = "Methods",
-      #   mod_methods_ui("methods_1")
-      # ),
       bslib::nav_panel(
         title = "Rainfall Analysis",
         mod_rainfall_analysis_ui("rainfall_analysis_1")

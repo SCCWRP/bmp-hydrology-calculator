@@ -14,24 +14,7 @@ mod_flow_analysis_ui <- function(id) {
     width = "20%",
     open = "always",
     class = "html-fill-container",
-
-    bslib::tooltip(
-      span(strong("Step 1: Download Demo Data", bsicons::bs_icon("question-circle"))),
-      "Demo data for flow"
-    ),
-    shinyWidgets::downloadBttn(
-      outputId = ns("download_demo_flow"),
-    ),
-
-    bslib::tooltip(
-      span(strong("Step 2: Download Template", bsicons::bs_icon("question-circle"))),
-      "Demo data for flow"
-    ),
-    shinyWidgets::downloadBttn(
-      outputId = ns("download_template_flow"),
-    ),
-
-    strong("Step 3: Submit Data"),
+    strong("Step 1: Submit Data"),
     fileInput(
       inputId = ns("flow_file"),
       label = "Choose Excel File",
@@ -53,10 +36,11 @@ mod_flow_analysis_ui <- function(id) {
       width = "200px"
     ),
 
-    # Step 3: Select Input Filter Parameters (Optional)
     bslib::card_body(
       bslib::tooltip(
-        span(strong("Step 3 (Optional): Select Input Filter Parameters", bsicons::bs_icon("question-circle"))),
+        span(
+          strong("Step 3 (Optional): Select Input Filter Parameters", bsicons::bs_icon("question-circle"))
+        ),
         "Set the desired time range and graph title."
       ),
       shinyWidgets::airDatepickerInput(
@@ -156,6 +140,7 @@ mod_flow_analysis_ui <- function(id) {
     sidebar = sidebar,
     main_panel
   )
+
 }
 
 
@@ -347,20 +332,6 @@ mod_flow_analysis_server <- function(id) {
     # --------------------------------------------------------------------------
     # 3. Download Handlers
     # --------------------------------------------------------------------------
-    output$download_demo_flow <- downloadHandler(
-      filename = "demo_flowrate_data.xlsx",
-      content = function(file) {
-        file.copy("inst/extdata/demo_flowrate_data.xlsx", file, overwrite = TRUE)
-      }
-    )
-
-    output$download_template_flow <- downloadHandler(
-      filename = "flow_template.xlsx",
-      content = function(file) {
-        file.copy("inst/extdata/flow_template.xlsx", file, overwrite = TRUE)
-      }
-    )
-
     output$download_flow_plot <- downloadHandler(
       filename = function() {
         "downloaded_flow_plot.png"
@@ -373,6 +344,7 @@ mod_flow_analysis_server <- function(id) {
         )
       }
     )
+
   })
 }
 
