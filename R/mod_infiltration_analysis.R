@@ -14,7 +14,10 @@ mod_infiltration_analysis_ui <- function(id) {
     width = "17%",
     open = "always",
     class = "html-fill-container",
-    strong("Step 1: Upload data"),
+    bslib::tooltip(
+      span(strong("Step 1: Upload data"), bsicons::bs_icon("question-circle")),
+      "Check Data Requirement before uploading the data."
+    ),
     fileInput(
       ns("file"),
       "Choose Excel File",
@@ -22,20 +25,28 @@ mod_infiltration_analysis_ui <- function(id) {
       accept = ".xlsx"
     ) |>
       bslib::as_fillable_container(style = "overflow-y:auto", max_height = "200px"),
-    strong("Step 2: Validate data"),
     bslib::tooltip(
-      shinyWidgets::actionBttn(ns("validate_infiltration"), "Validate data"),
-      "Validate data before submitting. If there are errors, you will be prompted to fix them.",
-      bsicons::bs_icon("question-circle")
+      span(strong("Step 2: Validate data"), bsicons::bs_icon("question-circle")),
+      "Becomes available after Step 1 is done. Validate data before submitting. If there are errors, you will be prompted to fix them."
     ),
-    strong("Step 3: Submit data"),
     shinyjs::disabled(
-      bslib::tooltip(
-        shinyWidgets::actionBttn(ns("submit_infiltration"), "Submit"),
-        "Submit data when validation is successful.",
-        bsicons::bs_icon("question-circle")
+      shinyWidgets::actionBttn(ns("validate_infiltration"), "Validate data")
+    ),
+    bslib::tooltip(
+      span(strong("Step 3: Input depth's unit"), bsicons::bs_icon("question-circle")),
+      "Note that the rate will be <your-unit>/hr"
+    ),
+    shinyjs::disabled(
+      textInput(
+       ns("depth_unit_infiltration"),
+       label = NULL
       )
     ),
+    bslib::tooltip(
+      span(strong("Step 4: Submit data"), bsicons::bs_icon("question-circle")),
+      "Becomes available after Step 2 is done. Submit data when validation is successful."
+    ),
+    shinyjs::disabled(shinyWidgets::actionBttn(ns("submit_infiltration"), "Submit")),
     bslib::card_body(
       bslib::tooltip(
         span(strong("Constants for smoothing and regression", bsicons::bs_icon("question-circle"))),
@@ -160,13 +171,18 @@ mod_infiltration_analysis_server <- function(id) {
     validatedData <- reactiveVal(NULL)
     analysisResults <- reactiveVal(NULL)
 
+    observeEvent(input$file, {
+      shinyjs::enable("validate_infiltration")
+      shinyjs::enable("depth_unit_infiltration")
+    })
+
     observeEvent(input$validate_infiltration, {
       req(input$file)
 
       # Show a modal indicating that validation is in progress.
       showModal(modalDialog(
         title = "Validating your data",
-        "Please wait while we validate your data...",
+        "Please wait while we validate your data. This might take a while depending on the data'size...",
         footer = NULL,
         easyClose = FALSE
       ))
@@ -328,7 +344,7 @@ mod_infiltration_analysis_server <- function(id) {
           ggplot2::labs(
             title = sheet,
             x = "Datetime",
-            y = "Depth (cm)",
+            y = paste("Depth (", input$depth_unit_infiltration, ")", sep=""),
             color = "Piezometer"
           )
 
@@ -394,10 +410,11 @@ mod_infiltration_analysis_server <- function(id) {
         dt <- res$table
         col_mapping <- c(
           "Piezometer"        = "Piezometer",
-          "Infiltration_rate" = "Infiltration Rate (cm/hr)",
+          "Infiltration_rate" = paste("Infiltration Rate (", input$depth_unit_infiltration, "/hr)", sep=""),
           "Duration_hrs"      = "Duration (hrs)",
-          "Average_depth"     = "Average Depth (cm)"
+          "Average_depth"     = paste("Average Depth (", input$depth_unit_infiltration, ")", sep="")
         )
+
         names(dt) <- sapply(names(dt), function(x) {
           if (x %in% names(col_mapping)) col_mapping[[x]] else x
         })
@@ -523,10 +540,11 @@ mod_infiltration_analysis_server <- function(id) {
         dt <- res$table
         col_mapping <- c(
           "Piezometer"        = "Piezometer",
-          "Infiltration_rate" = "Infiltration Rate (cm/hr)",
+          "Infiltration_rate" = paste("Infiltration Rate (", input$depth_unit_infiltration, "/hr)", sep=""),
           "Duration_hrs"      = "Duration (hrs)",
-          "Average_depth"     = "Average Depth (cm)"
+          "Average_depth"     = paste("Average Depth (", input$depth_unit_infiltration, ")", sep="")
         )
+
         names(dt) <- sapply(names(dt), function(x) {
           if (x %in% names(col_mapping)) col_mapping[[x]] else x
         })
@@ -545,9 +563,9 @@ mod_infiltration_analysis_server <- function(id) {
       col_mapping <- c(
         "storm_name"        = "Storm Name",
         "Piezometer"        = "Piezometer",
-        "Infiltration_rate" = "Infiltration Rate (cm/hr)",
+        "Infiltration_rate" = paste("Infiltration Rate (", input$depth_unit_infiltration, "/hr)", sep=""),
         "Duration_hrs"      = "Duration (hrs)",
-        "Average_depth"     = "Average Depth (cm)"
+        "Average_depth"     = paste("Average Depth (", input$depth_unit_infiltration, ")", sep="")
       )
       names(dt) <- sapply(names(dt), function(x) {
         if (x %in% names(col_mapping)) col_mapping[[x]] else x

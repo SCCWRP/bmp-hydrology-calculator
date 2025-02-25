@@ -104,11 +104,7 @@ mod_flow_analysis_ui <- function(id) {
                 selected = NULL,
                 multiple = TRUE
               ),
-              shinyWidgets::actionBttn(
-                inputId = ns("download_flow_plot"),
-                label = "Download Plot",
-                icon = bsicons::bs_icon("download")
-              )
+              shinyWidgets::downloadBttn(ns("download_plot_flow"), "Download Plot")
             )
           )
         ),
@@ -119,16 +115,8 @@ mod_flow_analysis_ui <- function(id) {
           bslib::card_footer(
             bslib::layout_columns(
               col_widths = c(6, 6),
-              shinyWidgets::actionBttn(
-                inputId = ns("download_flow_table"),
-                label = "Download Table",
-                icon = bsicons::bs_icon("download")
-              ),
-              shinyWidgets::actionBttn(
-                inputId = ns("download_flow_table_smc"),
-                label = "Download Table in SMC Format",
-                icon = bsicons::bs_icon("download")
-              )
+              shinyWidgets::downloadBttn(ns("download_table_flow"), "Download Table"),
+              shinyWidgets::downloadBttn(ns("download_table_smc_flow"), "Download Table in SMC Format")
             )
           )
         )
@@ -332,19 +320,93 @@ mod_flow_analysis_server <- function(id) {
     # --------------------------------------------------------------------------
     # 3. Download Handlers
     # --------------------------------------------------------------------------
-    output$download_flow_plot <- downloadHandler(
+    output$download_plot_flow <- downloadHandler(
       filename = function() {
-        "downloaded_flow_plot.png"
+        paste0("flow_plot_", Sys.Date(), ".png")
       },
       content = function(file) {
-        ggplot2::ggsave(
-          file,
-          plot = plot_data() + ggplot2::coord_cartesian(expand = FALSE),
-          device = "png"
+        req(plot_data())
+        thematic::thematic_local_theme(
+          thematic::thematic_theme(
+            bg = bslib::bs_get_contrast(bslib::bs_theme(preset = "cosmo"), "secondary"),
+            fg = bslib::bs_get_variables(bslib::bs_theme(preset = "cosmo"), "secondary")
+          )
         )
+        df <- plot_data()
+        # Filter based on the selected flow types
+        if (!is.null(input$choose_graph_flow) && length(input$choose_graph_flow) > 0) {
+          df <- df %>% dplyr::filter(flow_type %in% input$choose_graph_flow)
+        }
+        p <- ggplot2::ggplot(df, ggplot2::aes(x = datetime, y = flow, colour = flow_type)) +
+          ggplot2::geom_line(size = 1.5) +
+          ggplot2::labs(
+            x = "Datetime",
+            y = paste("Flow rate (", input$flow_units_flow, ")", sep = ""),
+            title = input$graph_title_flow
+          )
+        ggplot2::ggsave(file, plot = p, device = "png", width = 8, height = 6)
       }
     )
 
+    # --- Download Handler for Flow Table ---
+    output$download_table_flow <- downloadHandler(
+      filename = function() {
+        paste0("flow_table_", Sys.Date(), ".csv")
+      },
+      content = function(file) {
+        df <- statistics() %>%
+          dplyr::select(flow_type, peak_flow_rate, runoff_duration, runoff_volume) %>%
+          dplyr::rename(
+            "Type of flow" = flow_type,
+            "Peak flow rate" = peak_flow_rate,
+            "Duration of runoff (h)" = runoff_duration,
+            "Runoff volume" = runoff_volume
+          )
+        write.csv(df, file, row.names = FALSE)
+      }
+    )
+
+    # --- Download Handler for Flow Table in SMC Format ---
+    output$download_table_smc_flow <- downloadHandler(
+      filename = function() {
+        paste0("flow_table_smc_", Sys.Date(), ".csv")
+      },
+      content = function(file) {
+        df <- statistics() %>%
+          # Convert date-time columns to proper POSIXct
+          dplyr::mutate(
+            start_time = as.POSIXct(start_time, format = "%Y-%m-%d %H:%M:%S"),
+            end_time = as.POSIXct(end_time, format = "%Y-%m-%d %H:%M:%S")
+          ) %>%
+          # Convert to SMC format using your provided mapping:
+          dplyr::mutate(
+            monitoringstation = flow_type,
+            datestart = as.Date(start_time),
+            timestart = format(start_time, "%H:%M:%S"),
+            dateend = as.Date(end_time),
+            timeend = format(end_time, "%H:%M:%S"),
+            volumetotal = runoff_volume,
+            volumeunits = input$flow_units_flow,
+            peakflowrate = peak_flow_rate,
+            peakflowunits = input$flow_units_flow
+          ) %>%
+          dplyr::select(
+            monitoringstation,
+            datestart,
+            timestart,
+            dateend,
+            timeend,
+            volumetotal,
+            volumeunits,
+            peakflowrate,
+            peakflowunits
+          ) %>%
+          dplyr::mutate(
+            peakflowunits = gsub("L/s", "lps", peakflowunits)
+          )
+        write.csv(df, file, row.names = FALSE)
+      }
+    )
   })
 }
 

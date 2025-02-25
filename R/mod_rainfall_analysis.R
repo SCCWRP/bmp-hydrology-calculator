@@ -87,7 +87,7 @@ mod_rainfall_analysis_ui <- function(id) {
                 choices = NULL,
                 multiple = FALSE
               ),
-              shinyWidgets::actionBttn(ns("download_rainfall_plot"), "Download Plot")
+              shinyWidgets::downloadBttn(ns("download_plot_rainfall"), "Download Plot")
             )
           )
         ),
@@ -100,10 +100,8 @@ mod_rainfall_analysis_ui <- function(id) {
             fillable = TRUE,
             bslib::layout_columns(
               col_widths = c(6, 6),
-              shinyWidgets::actionBttn(ns("download_rainfall_table"), "Download Table",
-                                       icon = bsicons::bs_icon("download")),
-              shinyWidgets::actionBttn(ns("download_rainfall_table_smc"), "Download Table in SMC Format",
-                                       icon = bsicons::bs_icon("download")),
+              shinyWidgets::downloadBttn(ns("download_table_rainfall"), "Download Table"),
+              shinyWidgets::downloadBttn(ns("download_table_smc_rainfall"), "Download Table in SMC Format")
             )
           )
         )
@@ -268,8 +266,6 @@ mod_rainfall_analysis_server <- function(id) {
           )
         }
       }
-
-
       ggplot2::ggplot(df, ggplot2::aes(x = hours, y = cumsum)) +
         ggplot2::geom_line(color = "steelblue", size = 1.5) +
         ggplot2::labs(
@@ -320,7 +316,6 @@ mod_rainfall_analysis_server <- function(id) {
           )
       }
 
-
       DT::datatable(
         data,
         rownames = FALSE,
@@ -332,15 +327,20 @@ mod_rainfall_analysis_server <- function(id) {
       )
     })
 
-    output$download_rainfall_plot <- downloadHandler(
+    output$download_plot_rainfall <- downloadHandler(
       filename = function() {
-        "downloaded_plot.png"
+        paste0("rainfall_plot_", Sys.Date(), ".png")
       },
       content = function(file) {
+        req(plot_data())
+        thematic::thematic_local_theme(
+          thematic::thematic_theme(
+            bg = bslib::bs_get_contrast(bslib::bs_theme(preset = "cosmo"), "secondary"),
+            fg = bslib::bs_get_variables(bslib::bs_theme(preset = "cosmo"), "secondary")
+          )
+        )
         df <- plot_data()
         selected_event <- input$event_selector_rainfall
-
-        # Only filter if a specific event is selected.
         if (!is.null(selected_event) && selected_event != "All events") {
           ev <- as.numeric(selected_event)
           if (!is.null(statistics()) && ev %in% statistics()$event) {
@@ -351,7 +351,6 @@ mod_rainfall_analysis_server <- function(id) {
             )
           }
         }
-
         p <- ggplot2::ggplot(df, ggplot2::aes(x = hours, y = cumsum)) +
           ggplot2::geom_line(color = "steelblue", size = 1.5) +
           ggplot2::labs(
@@ -359,14 +358,110 @@ mod_rainfall_analysis_server <- function(id) {
             y = paste("Cumulative rainfall (", rain_unit(), ")", sep = ""),
             title = input$title
           )
-
-        ggplot2::ggsave(
-          file,
-          plot = p,
-          device = "png"
-        )
+        ggplot2::ggsave(file, plot = p, device = "png", width = 8, height = 6)
       }
     )
 
+    # --- Download Handler for Rainfall Table ---
+    output$download_table_rainfall <- downloadHandler(
+      filename = function() {
+        if (as.numeric(input$rainfall_resolution) == 0.1) {
+          paste0("rainfall_table_mm_", Sys.Date(), ".csv")
+        } else {
+          paste0("rainfall_table_in_", Sys.Date(), ".csv")
+        }
+      },
+      content = function(file) {
+        data <- statistics() %>%
+          dplyr::select(-last_rain) %>%
+          dplyr::mutate(
+            first_rain = format(as.POSIXct(first_rain), format = "%Y-%m-%d %H:%M:%S"),
+            total_rainfall = round(total_rainfall, 2),
+            avg_rainfall_intensity = round(avg_rainfall_intensity, 2),
+            peak_5_min_rainfall_intensity = round(peak_5_min_rainfall_intensity, 2),
+            peak_10_min_rainfall_intensity = round(peak_10_min_rainfall_intensity, 2),
+            peak_60_min_rainfall_intensity = round(peak_60_min_rainfall_intensity, 2),
+            antecedent_dry_period = round(antecedent_dry_period, 2)
+          )
+        if (as.numeric(input$rainfall_resolution) == 0.1) {
+          data <- data %>%
+            dplyr::rename(
+              `Event ID` = event,
+              `Storm Date` = first_rain,
+              `Total Rainfall (mm)` = total_rainfall,
+              `Average Rainfall Intensity (mm/hr)` = avg_rainfall_intensity,
+              `Peak 5-min Rainfall Intensity (mm/hr)` = peak_5_min_rainfall_intensity,
+              `Peak 10-min Rainfall Intensity (mm/hr)` = peak_10_min_rainfall_intensity,
+              `Peak 60-min Rainfall Intensity (mm/hr)` = peak_60_min_rainfall_intensity,
+              `Antecedent Dry Period (hours)` = antecedent_dry_period
+            )
+        } else {
+          data <- data %>%
+            dplyr::rename(
+              `Event ID` = event,
+              `Storm Date` = first_rain,
+              `Total Rainfall (in)` = total_rainfall,
+              `Average Rainfall Intensity (in/hr)` = avg_rainfall_intensity,
+              `Peak 5-min Rainfall Intensity (in/hr)` = peak_5_min_rainfall_intensity,
+              `Peak 10-min Rainfall Intensity (in/hr)` = peak_10_min_rainfall_intensity,
+              `Peak 60-min Rainfall Intensity (in/hr)` = peak_60_min_rainfall_intensity,
+              `Antecedent Dry Period (hours)` = antecedent_dry_period
+            )
+        }
+        write.csv(data, file, row.names = FALSE)
+      }
+    )
+
+    # --- Download Handler for Rainfall Table in SMC Format ---
+    output$download_table_smc_rainfall <- downloadHandler(
+      filename = function() {
+        if (as.numeric(input$rainfall_resolution) == 0.1) {
+          paste0("rainfall_table_smc_mm_", Sys.Date(), ".csv")
+        } else {
+          paste0("rainfall_table_smc_in_", Sys.Date(), ".csv")
+        }
+      },
+      content = function(file) {
+        df <- statistics()
+
+        if (as.numeric(input$rainfall_resolution) == 0.1) {
+          totaldepthunits <- 'mm'
+          onehourpeakrateunit <- 'mm/hr'
+        } else {
+          totaldepthunits <- 'inch'
+          onehourpeakrateunit <- 'inch/hr'
+        }
+
+        df <- df %>%
+          dplyr::mutate(
+            eventid = event,
+            startdate = as.Date(first_rain),
+            starttime = format(first_rain, "%H:%M:%S"),
+            enddate = as.Date(last_rain),
+            endtime = format(last_rain, "%H:%M:%S"),
+            totaldepth = total_rainfall,
+            totaldepthunits = totaldepthunits,
+            onehourpeakrate = peak_60_min_rainfall_intensity,
+            onehourpeakrateunit = onehourpeakrateunit,
+            antecedentdryperiod = antecedent_dry_period
+          ) %>%
+          dplyr::select(
+            eventid,
+            startdate,
+            starttime,
+            enddate,
+            endtime,
+            totaldepth,
+            totaldepthunits,
+            onehourpeakrate,
+            onehourpeakrateunit,
+            antecedentdryperiod
+          ) %>%
+          dplyr::rename(
+            antecedentdryperiod_days = antecedentdryperiod
+          )
+        write.csv(df, file, row.names = FALSE)
+      }
+    )
   })
 }

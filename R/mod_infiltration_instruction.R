@@ -23,7 +23,7 @@ Infiltration data should be copied and pasted from your datasheet into the downl
 
 **Data Requirements**
 The uploaded Excel spreadsheet must conform to the following requirements:
-1. Infiltration must be reported in cm/hr.
+1. Infiltration must be reported in unit per hour.
 2. The timestamp should be in 24-hour format (mm/dd/yy hh:mm:ss).
 3. Each tab must contain a column called datetime
 4. You can put the data for multiple sensors in other columns, but you need to make sure the column names are unique, and they need to contain numeric data
