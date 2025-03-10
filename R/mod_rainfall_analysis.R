@@ -41,7 +41,7 @@ mod_rainfall_analysis_ui <- function(id) {
     ),
     selectInput(
       ns("rainfall_resolution"),
-      label = "Choose a rainfall resolution",
+      label = NULL,
       choices = c("0.01 inch" = 0.01, "0.1 mm" = 0.1),
       selected = 0.01
     ),
@@ -96,7 +96,7 @@ mod_rainfall_analysis_ui <- function(id) {
                 choices = NULL,
                 multiple = FALSE
               ),
-              shinyWidgets::downloadBttn(ns("download_plot_rainfall"), "Download Plot")
+              shinyWidgets::downloadBttn(ns("download_plot_rainfall"), "Download plot")
             )
           )
         ),
@@ -109,8 +109,8 @@ mod_rainfall_analysis_ui <- function(id) {
             fillable = TRUE,
             bslib::layout_columns(
               col_widths = c(6, 6),
-              shinyWidgets::downloadBttn(ns("download_table_rainfall"), "Download Table"),
-              shinyWidgets::downloadBttn(ns("download_table_smc_rainfall"), "Download Table in SMC Format")
+              shinyWidgets::downloadBttn(ns("download_table_rainfall"), "Download table"),
+              shinyWidgets::downloadBttn(ns("download_table_smc_rainfall"), "Download table in SMC format")
             )
           )
         )

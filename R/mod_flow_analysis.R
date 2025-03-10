@@ -46,7 +46,7 @@ mod_flow_analysis_ui <- function(id) {
     strong("Step 3: Indicate units of flow measurement"),
     shinyWidgets::pickerInput(
       inputId = ns("flow_units_flow"),
-      label = "Flow units of submitted data",
+      label = NULL,
       choices = c(
         "L/s" = "L/s",
         "gal/min (gpm)" = "gal/min",
@@ -126,7 +126,7 @@ mod_flow_analysis_ui <- function(id) {
                 selected = NULL,
                 multiple = TRUE
               ),
-              shinyWidgets::downloadBttn(ns("download_plot_flow"), "Download Plot")
+              shinyWidgets::downloadBttn(ns("download_plot_flow"), "Download plot")
             )
           )
         ),
@@ -137,8 +137,8 @@ mod_flow_analysis_ui <- function(id) {
           bslib::card_footer(
             bslib::layout_columns(
               col_widths = c(6, 6),
-              shinyWidgets::downloadBttn(ns("download_table_flow"), "Download Table"),
-              shinyWidgets::downloadBttn(ns("download_table_smc_flow"), "Download Table in SMC Format")
+              shinyWidgets::downloadBttn(ns("download_table_flow"), "Download table"),
+              shinyWidgets::downloadBttn(ns("download_table_smc_flow"), "Download table in SMC format")
             )
           )
         )

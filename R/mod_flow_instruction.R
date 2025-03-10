@@ -8,15 +8,14 @@
 #'
 # Flow-specific markdown text
 flow_markdown_text <- "
-It is required that the column names and tab names in the templates remain unchanged.
+**It is required that the column names and tab names in the templates remain unchanged.**
 
-**Flow Analysis:**
 Flow data should be copy-pasted from a user's datasheet to the downloaded data template. Up to four flows can be accommodated for analysis. The available flow types are inflow 1, inflow 2, outflow, and bypass. Refer to the Methods tab for an illustration of the possible flow type configurations. A user does not need to submit all four types; any combination of the flow types is acceptable. A user can only submit flow data for a single rain event. If any of the data types are not applicable, leave the tab blank (as is).
 
 - Download flow demo data
 - Download flow template
 
-**Data Requirements**
+**Data Requirements:**
 The uploaded Excel spreadsheet must conform to the following requirements:
 1. Flow must be reported in units of L/s, gpm, or cfs. All tabs must use the same flow unit.
 2. The timestamp should be in 24-hour format (mm/dd/yy hh:mm:ss).
@@ -38,8 +37,8 @@ mod_flow_instruction_ui <- function(id) {
     bslib::card_footer(
       bslib::layout_columns(
         col_widths = c(6, 6),
-        shinyWidgets::downloadBttn(ns("download_demo_flow"), "Download Flow Demo Data"),
-        shinyWidgets::downloadBttn(ns("download_template_flow"), "Download Flow Template")
+        shinyWidgets::downloadBttn(ns("download_demo_flow"), "Download flow demo data"),
+        shinyWidgets::downloadBttn(ns("download_template_flow"), "Download flow template")
       )
     )
   )
