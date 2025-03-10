@@ -12,8 +12,6 @@ mod_infiltration_instruction_ui <- function(id) {
 
   # Infiltration-specific markdown text
   infiltration_markdown_text <- "
-**It is required that the column names and tab names in the templates remain unchanged.**
-
 
 Infiltration data should be copied and pasted from your datasheet into the downloaded data template. This application can accommodate infiltration measurements over time from multiple infiltration points if needed. Refer to the Methods tab for an illustration of how infiltration data should be structured. A user can submit infiltration data for one or more events in a single file, as long as timestamps and values are continuous and without skipping records.
 
@@ -26,6 +24,7 @@ The uploaded Excel spreadsheet must conform to the following requirements:
 2. The timestamp should be in 24-hour format (mm/dd/yy hh:mm:ss).
 3. Each tab must contain a column called datetime
 4. You can put the data for multiple sensors in other columns, but you need to make sure the column names are unique, and they need to contain numeric data
+5. **The column names and the tab names must not be changed from the template**.
 "
 
   bslib::card(

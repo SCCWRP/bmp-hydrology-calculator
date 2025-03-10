@@ -30,20 +30,27 @@ validate_rainfall_file <- function(file_path) {
 
 
 # Helper function: Validate the flow file and return a list of error messages.
+# Helper function: Validate the flow file and return a list of error messages.
 validate_flow_file <- function(file_path) {
   errors <- list()
 
-  # Expected sheet names.
-  expected_sheets <- c("Instructions", "inflow1", "inflow2", "outflow", "bypass")
+  # Expected data sheet names (ignore "Instructions")
+  expected_data_sheets <- c("inflow1", "inflow2", "outflow", "bypass")
 
-  # Check that the file has exactly 5 sheets and that they match the expected names.
+  # Get all sheet names from the file.
   sheets <- readxl::excel_sheets(file_path)
-  if (length(sheets) != 5 || !all(expected_sheets %in% sheets)) {
-    errors <- c(errors, "The uploaded Excel file must have exactly 5 sheets: Instructions, inflow1, inflow2, outflow, bypass.")
+
+  # Check that all expected data sheets are present.
+  if (!all(expected_data_sheets %in% sheets)) {
+    errors <- c(
+      errors,
+      paste0("The uploaded Excel file must contain the following sheets: ",
+             paste(expected_data_sheets, collapse = ", "), ".")
+    )
   }
 
-  # For each expected sheet, validate its structure.
-  for (sheet in expected_sheets) {
+  # Validate each expected data sheet.
+  for (sheet in expected_data_sheets) {
     if (sheet %in% sheets) {
       df <- readxl::read_excel(file_path, sheet = sheet)
 
@@ -65,6 +72,7 @@ validate_flow_file <- function(file_path) {
 
   return(errors)
 }
+
 
 
 read_excel_allsheets <- function(filename) {

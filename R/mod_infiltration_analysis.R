@@ -45,7 +45,7 @@ mod_infiltration_analysis_ui <- function(id) {
     ),
     bslib::tooltip(
       span(strong("Step 4: Submit data"), bsicons::bs_icon("question-circle")),
-      "Becomes available after Step 2 is done. Submit data when validation is successful."
+      "Submit data when validation is successful."
     ),
     shinyjs::disabled(shinyWidgets::actionBttn(ns("submit_infiltration"), "Submit")),
     bslib::card_body(

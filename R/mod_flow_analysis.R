@@ -84,6 +84,10 @@ mod_flow_analysis_ui <- function(id) {
         label = "Input a title for the graph (optional)",
         placeholder = NULL
       ),
+      bslib::tooltip(
+        span(strong("Step 5: Submit data"), bsicons::bs_icon("question-circle")),
+        "Submit data when validation is successful."
+      ),
       shinyjs::disabled(
         shinyWidgets::actionBttn(
           inputId = ns("submit_flow"),
@@ -172,6 +176,8 @@ mod_flow_analysis_server <- function(id) {
     observeEvent(input$validate_flow, {
       req(input$flow_file)
       errors <- validate_flow_file(input$flow_file$datapath)
+      print("errors")
+      print(errors)
       if (length(errors) > 0) {
         showModal(modalDialog(
           title = "Validation Error",

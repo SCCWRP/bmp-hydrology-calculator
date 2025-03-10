@@ -57,6 +57,10 @@ mod_rainfall_analysis_ui <- function(id) {
 
     # Step 5: Submit Button (disabled by default; enable after validation passes)
     bslib::card_body(
+      bslib::tooltip(
+        span(strong("Step 4: Submit data"), bsicons::bs_icon("question-circle")),
+        "Submit data when validation is successful."
+      ),
       shinyjs::disabled(shinyWidgets::actionBttn(ns("submit_rainfall"), "Submit"))
     )
   )
