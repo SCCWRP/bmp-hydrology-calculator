@@ -37,8 +37,10 @@ mod_infiltration_analysis_ui <- function(id) {
       "Note that the rate will be <your-unit>/hr"
     ),
     shinyjs::disabled(
-      textInput(
+      selectInput(
        ns("depth_unit_infiltration"),
+       "Depth Unit",
+       choices = c("mm", "cm", "in"),
        label = NULL
       )
     ),
@@ -186,7 +188,7 @@ mod_infiltration_analysis_server <- function(id) {
         footer = NULL,
         easyClose = FALSE
       ))
-
+      removeModal()
       # Run validation.
       result <- validate_file(input$file$datapath)
 
@@ -235,7 +237,7 @@ mod_infiltration_analysis_server <- function(id) {
       # Pop up a "Calculating" modal.
       showModal(modalDialog(
         title = "Calculating",
-        "Please wait while we process the data...",
+        "Please wait while we process the data.This might take a few minutes depending on your data size...",
         footer = NULL,
         easyClose = FALSE
       ))
@@ -245,129 +247,141 @@ mod_infiltration_analysis_server <- function(id) {
 
       # Loop through each validated sheet.
       for (sheet in names(valid_data)) {
-        data_df <- valid_data[[sheet]]
-        df <- data_df
-        df$datetime <- as.character(as.POSIXct(df$datetime, tz = "UTC"))
+        tryCatch({
+          data_df <- valid_data[[sheet]]
+          df <- data_df
+          df$datetime <- as.character(as.POSIXct(df$datetime, tz = "UTC"))
 
-        # Use constants from the UI.
-        SMOOTHING_WINDOW     <- input$smoothing_window
-        REGRESSION_WINDOW    <- input$regression_window
-        REGRESSION_THRESHOLD <- input$regression_threshold
+          # Use constants from the UI.
+          SMOOTHING_WINDOW     <- input$smoothing_window
+          REGRESSION_WINDOW    <- input$regression_window
+          REGRESSION_THRESHOLD <- input$regression_threshold
 
-        payload <- list(
-          data = df,
-          SMOOTHING_WINDOW     = SMOOTHING_WINDOW,
-          REGRESSION_WINDOW    = REGRESSION_WINDOW,
-          REGRESSION_THRESHOLD = REGRESSION_THRESHOLD
-        )
-
-        payload_json <- jsonlite::toJSON(payload, auto_unbox = TRUE, POSIXt = "ISO8601")
-
-        url <- "https://nexus.sccwrp.org/bmp_hydrology/api/infiltration"
-        response <- httr::POST(url,
-                               body = payload_json,
-                               encode = "json",
-                               httr::content_type_json())
-
-        if (httr::status_code(response) != 200) {
-          # If one sheet fails, store an error message.
-          results_list[[sheet]] <- list(error = paste("API request failed with status:", httr::status_code(response)))
-          next
-        }
-
-        result <- httr::content(response, "parsed")
-
-        ## Process the returned dataframe.
-        local_df <- jsonlite::fromJSON(jsonlite::toJSON(result$dataframe), flatten = TRUE)
-        local_df$datetime <- as.POSIXct(as.character(local_df$datetime), format = "%Y-%m-%dT%H:%M:%S")
-        local_df$datetime <- format(local_df$datetime, "%Y-%m-%d %H:%M:%S")
-        names(local_df) <- sub("\\..*$", "", names(local_df))
-
-        # Convert columns starting with "smooth_" to numeric.
-        smooth_cols <- grep("^smooth_", names(local_df), value = TRUE)
-        local_df[smooth_cols] <- lapply(local_df[smooth_cols], function(x) as.numeric(as.character(x)))
-
-        ## Reshape the smoothed columns for plotting.
-        df_long <- local_df |>
-          dplyr::select(datetime, dplyr::starts_with("smooth_")) |>
-          tidyr::pivot_longer(
-            cols = -datetime,
-            names_to = "piezometer",
-            values_to = "depth"
-          ) |>
-          dplyr::mutate(
-            depth = as.numeric(as.character(depth)),
-            piezometer = sub("^smooth_", "", piezometer)
+          payload <- list(
+            data = df,
+            SMOOTHING_WINDOW     = SMOOTHING_WINDOW,
+            REGRESSION_WINDOW    = REGRESSION_WINDOW,
+            REGRESSION_THRESHOLD = REGRESSION_THRESHOLD
           )
-        df_long$datetime <- as.POSIXct(df_long$datetime, format = "%Y-%m-%d %H:%M:%S", tz = "GMT")
 
-        ## Process best-fit line results.
-        calc_results <- result$calc_results
-        best_fit_df <- data.frame(
-          datetime   = as.POSIXct(character()),
-          best_fit   = numeric(),
-          piezometer = character(),
-          stringsAsFactors = FALSE
-        )
-        if (!is.null(calc_results)) {
-          for (piez in names(calc_results)) {
-            if (!is.null(calc_results[[piez]])) {
-              ext_time <- unlist(calc_results[[piez]]$extended_time)
-              ext_time <- as.POSIXct(ext_time, format = "%a, %d %b %Y %H:%M:%S GMT", tz = "GMT")
-              best_fit_line <- calc_results[[piez]]$best_fit_line
-              temp_df <- data.frame(
-                datetime   = ext_time,
-                best_fit   = as.numeric(unlist(best_fit_line)),
-                piezometer = piez,
-                stringsAsFactors = FALSE
-              )
-              best_fit_df <- rbind(best_fit_df, temp_df)
-            }
+          payload_json <- jsonlite::toJSON(payload, auto_unbox = TRUE, POSIXt = "ISO8601")
+          url <- "https://nexus.sccwrp.org/bmp_hydrology/api/infiltration"
+          response <- httr::POST(url,
+                                 body = payload_json,
+                                 encode = "json",
+                                 httr::content_type_json())
+
+          if (httr::status_code(response) != 200) {
+            # If one sheet fails, store an error message.
+            results_list[[sheet]] <- list(error = paste("API request failed with status:", httr::status_code(response)))
+            next
           }
-        }
 
-        ## Create the plot.
-        p <- ggplot2::ggplot() +
-          ggplot2::geom_line(
-            data = df_long,
-            ggplot2::aes(x = datetime, y = depth, color = paste("Original data", piezometer)),
-            size = 1.5
-          ) +
-          { if (nrow(best_fit_df) > 0)
-            ggplot2::geom_line(
-              data = best_fit_df,
-              ggplot2::aes(x = datetime, y = best_fit, color = paste("Regression Fits", piezometer)),
-              linetype = "dashed",
-              size = 1.5
+          result <- httr::content(response, "parsed")
+
+          ## Process the returned dataframe.
+          local_df <- jsonlite::fromJSON(jsonlite::toJSON(result$dataframe), flatten = TRUE)
+          local_df$datetime <- as.POSIXct(as.character(local_df$datetime), format = "%Y-%m-%dT%H:%M:%S")
+          local_df$datetime <- format(local_df$datetime, "%Y-%m-%d %H:%M:%S")
+          names(local_df) <- sub("\\..*$", "", names(local_df))
+
+          # Convert columns starting with "smooth_" to numeric.
+          smooth_cols <- grep("^smooth_", names(local_df), value = TRUE)
+          local_df[smooth_cols] <- lapply(local_df[smooth_cols], function(x) as.numeric(as.character(x)))
+
+          ## Reshape the smoothed columns for plotting.
+          df_long <- local_df |>
+            dplyr::select(datetime, dplyr::starts_with("smooth_")) |>
+            tidyr::pivot_longer(
+              cols = -datetime,
+              names_to = "piezometer",
+              values_to = "depth"
+            ) |>
+            dplyr::mutate(
+              depth = as.numeric(as.character(depth)),
+              piezometer = sub("^smooth_", "", piezometer)
             )
-            else NULL } +
-          ggplot2::labs(
-            title = sheet,
-            x = "Datetime",
-            y = paste("Depth (", input$depth_unit_infiltration, ")", sep=""),
-            color = "Piezometer"
-          )
+          df_long$datetime <- as.POSIXct(df_long$datetime, format = "%Y-%m-%d %H:%M:%S", tz = "GMT")
 
-        ## Prepare a table of metrics.
-        metrics_list <- list()
-        if (!is.null(calc_results)) {
-          for (piez in names(calc_results)) {
-            if (!is.null(calc_results[[piez]])) {
-              metrics_list[[piez]] <- data.frame(
-                Piezometer        = piez,
-                Infiltration_rate = round(calc_results[[piez]]$infiltration_rate, 2),
-                Duration_hrs      = round(calc_results[[piez]]$delta_x, 2),
-                Average_depth     = round(calc_results[[piez]]$y_average, 2),
-                stringsAsFactors  = FALSE
-              )
+          ## Process best-fit line results.
+          calc_results <- result$calc_results
+          best_fit_df <- data.frame(
+            datetime   = as.POSIXct(character()),
+            best_fit   = numeric(),
+            piezometer = character(),
+            stringsAsFactors = FALSE
+          )
+          if (!is.null(calc_results)) {
+            for (piez in names(calc_results)) {
+              if (!is.null(calc_results[[piez]])) {
+                ext_time <- unlist(calc_results[[piez]]$extended_time)
+                ext_time <- as.POSIXct(ext_time, format = "%a, %d %b %Y %H:%M:%S GMT", tz = "GMT")
+                best_fit_line <- calc_results[[piez]]$best_fit_line
+                temp_df <- data.frame(
+                  datetime   = ext_time,
+                  best_fit   = as.numeric(unlist(best_fit_line)),
+                  piezometer = piez,
+                  stringsAsFactors = FALSE
+                )
+                best_fit_df <- rbind(best_fit_df, temp_df)
+              }
             }
           }
-        }
-        metrics_df <- do.call(rbind, metrics_list)
 
-        # Store the result for this sheet.
-        results_list[[sheet]] <- list(plot = p, table = metrics_df)
+          ## Create the plot.
+          p <- ggplot2::ggplot() +
+            ggplot2::geom_line(
+              data = df_long,
+              ggplot2::aes(x = datetime, y = depth, color = paste("Original data", piezometer)),
+              size = 1.5
+            ) +
+            { if (nrow(best_fit_df) > 0)
+              ggplot2::geom_line(
+                data = best_fit_df,
+                ggplot2::aes(x = datetime, y = best_fit, color = paste("Regression Fits", piezometer)),
+                linetype = "dashed",
+                size = 1.5
+              )
+              else NULL } +
+            ggplot2::labs(
+              title = sheet,
+              x = "Datetime",
+              y = paste("Depth (", input$depth_unit_infiltration, ")", sep=""),
+              color = "Piezometer"
+            )
+
+          ## Prepare a table of metrics.
+          metrics_list <- list()
+          if (!is.null(calc_results)) {
+            for (piez in names(calc_results)) {
+              if (!is.null(calc_results[[piez]])) {
+                metrics_list[[piez]] <- data.frame(
+                  Piezometer        = piez,
+                  Infiltration_rate = round(calc_results[[piez]]$infiltration_rate, 2),
+                  Duration_hrs      = round(calc_results[[piez]]$delta_x, 2),
+                  Average_depth     = round(calc_results[[piez]]$y_average, 2),
+                  stringsAsFactors  = FALSE
+                )
+              }
+            }
+          }
+          metrics_df <- do.call(rbind, metrics_list)
+
+          # Store the result for this sheet.
+          results_list[[sheet]] <- list(plot = p, table = metrics_df)
+
+        }, error = function(e) {
+          # Display an error modal if something goes wrong.
+          showModal(modalDialog(
+            title = paste("Error processing sheet:", sheet),
+            paste("An error occurred:", e$message),
+            easyClose = TRUE,
+            footer = modalButton("Close")
+          ))
+          results_list[[sheet]] <- list(error = paste("An error occurred:", e$message))
+        })
       }
+
 
       # Save all analysis results.
       analysisResults(results_list)
@@ -583,10 +597,33 @@ mod_infiltration_analysis_server <- function(id) {
         paste0("data_table_", Sys.Date(), ".csv")
       },
       content = function(file) {
-        dt <- selected_result()$table
+        dt <- selected_result()$table %>%
+          # Rename the columns.
+          rename(
+            piezometer = Piezometer,
+            infiltration_rate = Infiltration_rate,
+            duration          = Duration_hrs,
+            average_depth     = Average_depth
+          ) %>%
+          # Add unit columns for each variable.
+          mutate(
+            infiltration_rate_unit = paste0(input$depth_unit_infiltration, "/hr"),
+            duration_unit          = "hr",
+            average_depth_unit     = input$depth_unit_infiltration
+          ) %>%
+          # Reorder columns so that the new unit columns follow their respective measures.
+          select(
+            piezometer,
+            infiltration_rate, infiltration_rate_unit,
+            duration, duration_unit,
+            average_depth, average_depth_unit,
+            everything()
+          )
+
         readr::write_csv(dt, file)
       }
     )
+
 
     # --- Download Handler for Combined All Results Table ---
     output$download_all_results_table <- downloadHandler(
@@ -594,10 +631,33 @@ mod_infiltration_analysis_server <- function(id) {
         paste0("all_results_table_", Sys.Date(), ".csv")
       },
       content = function(file) {
-        dt <- all_results_table()
+        dt <- all_results_table() %>%
+          # Rename the columns.
+          rename(
+            piezometer = Piezometer,
+            infiltration_rate = Infiltration_rate,
+            duration          = Duration_hrs,
+            average_depth     = Average_depth
+          ) %>%
+          # Add unit columns for each variable.
+          mutate(
+            infiltration_rate_unit = paste0(input$depth_unit_infiltration, "/hr"),
+            duration_unit          = "hr",
+            average_depth_unit     = input$depth_unit_infiltration
+          ) %>%
+          # Reorder columns so that the new unit columns follow their respective measures.
+          select(
+            storm_name, piezometer,
+            infiltration_rate, infiltration_rate_unit,
+            duration, duration_unit,
+            average_depth, average_depth_unit,
+            everything()
+          )
+
         readr::write_csv(dt, file)
       }
     )
+
 
 
 
