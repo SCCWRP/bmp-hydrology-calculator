@@ -13,21 +13,30 @@ mod_rainfall_analysis_ui <- function(id) {
     open = "always",
     class = "html-fill-container",
 
-    # Step 2: Upload Rainfall Data
+    # Step 1: Upload Rainfall Data
     bslib::tooltip(
-      span(strong("Step 1: Upload Data"), bsicons::bs_icon("question-circle")),
-      "Upload rainfall data (.xlsx file)."
+      span(strong("Step 1: Upload data"), bsicons::bs_icon("question-circle")),
+      "Expects a single .xlsx file. See Data Requirements for more info."
     ),
     fileInput(
       ns("rainfall_file"),
-      label = "Upload rainfall data (.xlsx file)",
+      label = NULL,
       multiple = FALSE,
       accept = ".xlsx"
     ),
 
+    # Step 2: Validate Data
+    bslib::tooltip(
+      span(strong("Step 2: Validate data"), bsicons::bs_icon("question-circle")),
+      "Data must be validated before proceeding."
+    ),
+    shinyjs::disabled(
+      shinyWidgets::actionBttn(ns("validate_rainfall"), "Validate data")
+    ),
+
     # Step 3: Choose a Rainfall Resolution
     bslib::tooltip(
-      span(strong("Step 2: Choose a Rainfall Resolution"), bsicons::bs_icon("question-circle")),
+      span(strong("Step 3: Choose a rainfall resolution"), bsicons::bs_icon("question-circle")),
       "Select the resolution for the rainfall data."
     ),
     selectInput(
@@ -41,12 +50,12 @@ mod_rainfall_analysis_ui <- function(id) {
     textInput(
       ns("title"),
       label = "Input a title for the graph (optional)",
-      placeholder = "Enter an optional title for the graph(s)",
+      placeholder = NULL,
       value = "",
       width = "100%"
     ),
 
-    # Submit Button (disabled by default)
+    # Step 5: Submit Button (disabled by default; enable after validation passes)
     bslib::card_body(
       shinyjs::disabled(shinyWidgets::actionBttn(ns("submit_rainfall"), "Submit"))
     )
@@ -125,35 +134,68 @@ mod_rainfall_analysis_server <- function(id) {
     ns <- session$ns
 
     # ----------------------------------------------------------------------------
-    # 1. Enable the Submit Button When a File is Uploaded
+    # 1. Enable Validate Button When a File is Uploaded (disable Submit until validation)
     # ----------------------------------------------------------------------------
     observeEvent(input$rainfall_file, {
       if (!is.null(input$rainfall_file)) {
-        shinyjs::enable("submit_rainfall")
+        shinyjs::enable("validate_rainfall")
+        shinyjs::disable("submit_rainfall")
       } else {
+        shinyjs::disable("validate_rainfall")
         shinyjs::disable("submit_rainfall")
       }
-      #updateNavbarPage(session, "main_rainfall", selected = "Result")
     })
+
+    # ----------------------------------------------------------------------------
+    # 2. Validate Uploaded File
+    # ----------------------------------------------------------------------------
+    observeEvent(input$validate_rainfall, {
+      req(input$rainfall_file)
+
+      # Call the validation function
+      errors <- validate_rainfall_file(input$rainfall_file$datapath)
+
+      if (length(errors) > 0) {
+        # If errors exist, show an error modal with all error messages
+        showModal(modalDialog(
+          title = "Validation Error",
+          pre(paste(errors, collapse = "\n")),
+          easyClose = TRUE,
+          footer = modalButton("Close")
+        ))
+        shinyjs::disable("submit_rainfall")
+      } else {
+        # If no errors, show success modal and enable the Submit button.
+        showModal(modalDialog(
+          title = "Validation Successful",
+          "The uploaded file has been validated successfully.",
+          easyClose = TRUE,
+          footer = modalButton("Close")
+        ))
+        shinyjs::enable("submit_rainfall")
+      }
+    })
+
+    # ----------------------------------------------------------------------------
+    # 3. Navigate to Result on Submit
+    # ----------------------------------------------------------------------------
     observeEvent(input$submit_rainfall, {
       updateNavbarPage(session, "main_rainfall", selected = "Result")
     })
 
     # ----------------------------------------------------------------------------
-    # 2. Data Processing Triggered by the Submit Button
+    # 4. Data Processing Triggered by the Submit Button
     # ----------------------------------------------------------------------------
-
-    # Read in the uploaded rainfall data from the "rainfall_data" sheet.
     data_input <- eventReactive(input$submit_rainfall, {
       print("user click")
       req(input$rainfall_file)
 
+      # Read in the "rainfall_data" sheet and select the expected columns.
       user_data <- readxl::read_excel(input$rainfall_file$datapath, sheet = "rainfall_data")
       user_data <- user_data %>% dplyr::select(datetime, rain)
       user_data
     })
 
-    # Build the JSON payload for the API call.
     payload <- eventReactive(input$submit_rainfall, {
       req(data_input())
       user_data <- data_input() %>% dplyr::arrange(datetime)
@@ -161,7 +203,6 @@ mod_rainfall_analysis_server <- function(id) {
         jsonlite::toJSON(dataframe = "columns", POSIXt = "ISO8601", auto_unbox = TRUE)
     })
 
-    # Call the API and return its response.
     response <- eventReactive(input$submit_rainfall, {
       req(payload())
       showModal(modalDialog("Calculating...", footer = NULL))
@@ -176,7 +217,6 @@ mod_rainfall_analysis_server <- function(id) {
       content
     })
 
-    # Process the returned statistics.
     statistics <- eventReactive(input$submit_rainfall, {
       req(response())
       response()$statistics %>%
@@ -212,7 +252,6 @@ mod_rainfall_analysis_server <- function(id) {
         )
     })
 
-    # Prepare data for the cumulative rainfall plot.
     plot_data <- eventReactive(input$submit_rainfall, {
       req(data_input())
       data_input() %>%
@@ -222,7 +261,6 @@ mod_rainfall_analysis_server <- function(id) {
         )
     })
 
-    # Determine the rainfall unit based on the selected resolution.
     rain_unit <- reactive({
       if (as.numeric(input$rainfall_resolution) == 0.01) {
         "inch"
@@ -232,7 +270,7 @@ mod_rainfall_analysis_server <- function(id) {
     })
 
     observe({
-      req(statistics())  # Only proceed if statistics() is ready
+      req(statistics())
       event_ids <- as.character(statistics()$event)
       # Add "All events" as the first choice
       event_ids <- c("All events", event_ids)
@@ -244,18 +282,13 @@ mod_rainfall_analysis_server <- function(id) {
       )
     }) |> bindEvent(statistics())
 
-
-
     # ----------------------------------------------------------------------------
-    # 3. Output: Plot and DataTable
+    # 5. Output: Plot and DataTable
     # ----------------------------------------------------------------------------
-
     output$rainfall_plot <- renderPlot({
       req(plot_data())
       df <- plot_data()
-
       selected_event <- input$event_selector_rainfall
-
       if (!is.null(selected_event) && selected_event != "All events") {
         ev <- as.numeric(selected_event)
         if (!is.null(statistics()) && ev %in% statistics()$event) {
@@ -275,10 +308,8 @@ mod_rainfall_analysis_server <- function(id) {
         )
     })
 
-
     output$rainfall_table <- DT::renderDT({
       req(statistics())
-
       data <- statistics() %>%
         dplyr::select(-last_rain) %>%
         dplyr::mutate(
@@ -310,12 +341,11 @@ mod_rainfall_analysis_server <- function(id) {
             `Total Rainfall (in)` = total_rainfall,
             `Average Rainfall Intensity (in/hr)` = avg_rainfall_intensity,
             `Peak 5-min Rainfall Intensity (in/hr)` = peak_5_min_rainfall_intensity,
-            `Peak 10-min Rainfall Intensity (in/hr)`= peak_10_min_rainfall_intensity,
-            `Peak 60-min Rainfall Intensity (in/hr)`= peak_60_min_rainfall_intensity,
+            `Peak 10-min Rainfall Intensity (in/hr)` = peak_10_min_rainfall_intensity,
+            `Peak 60-min Rainfall Intensity (in/hr)` = peak_60_min_rainfall_intensity,
             `Antecedent Dry Period (hours)` = antecedent_dry_period
           )
       }
-
       DT::datatable(
         data,
         rownames = FALSE,
@@ -362,7 +392,6 @@ mod_rainfall_analysis_server <- function(id) {
       }
     )
 
-    # --- Download Handler for Rainfall Table ---
     output$download_table_rainfall <- downloadHandler(
       filename = function() {
         if (as.numeric(input$rainfall_resolution) == 0.1) {
@@ -412,7 +441,6 @@ mod_rainfall_analysis_server <- function(id) {
       }
     )
 
-    # --- Download Handler for Rainfall Table in SMC Format ---
     output$download_table_smc_rainfall <- downloadHandler(
       filename = function() {
         if (as.numeric(input$rainfall_resolution) == 0.1) {
@@ -423,7 +451,6 @@ mod_rainfall_analysis_server <- function(id) {
       },
       content = function(file) {
         df <- statistics()
-
         if (as.numeric(input$rainfall_resolution) == 0.1) {
           totaldepthunits <- 'mm'
           onehourpeakrateunit <- 'mm/hr'
@@ -431,7 +458,6 @@ mod_rainfall_analysis_server <- function(id) {
           totaldepthunits <- 'inch'
           onehourpeakrateunit <- 'inch/hr'
         }
-
         df <- df %>%
           dplyr::mutate(
             eventid = event,
@@ -465,3 +491,4 @@ mod_rainfall_analysis_server <- function(id) {
     )
   })
 }
+

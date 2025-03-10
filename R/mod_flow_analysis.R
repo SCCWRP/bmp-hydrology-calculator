@@ -7,6 +7,15 @@
 #' @noRd
 #'
 #' @importFrom shiny NS tagList
+#' flow_analysis UI Function
+#'
+#' @description A shiny Module.
+#'
+#' @param id,input,output,session Internal parameters for {shiny}.
+#'
+#' @noRd
+#'
+#' @importFrom shiny NS tagList
 mod_flow_analysis_ui <- function(id) {
   ns <- NS(id)
 
@@ -14,19 +23,30 @@ mod_flow_analysis_ui <- function(id) {
     width = "20%",
     open = "always",
     class = "html-fill-container",
-    strong("Step 1: Submit Data"),
+
+    bslib::tooltip(
+      span(strong("Step 1: Upload data"), bsicons::bs_icon("question-circle")),
+      "Expects a single .xlsx file. See Data Requirements for more info."
+    ),
     fileInput(
       inputId = ns("flow_file"),
-      label = "Choose Excel File",
+      label = NULL,
       multiple = FALSE,
       accept = ".xlsx"
     ),
 
-    # Step 2: Indicate Units of Flow Measurement
-    strong("Step 2: Indicate Units of Flow Measurement"),
+    # New: Validate Data Button with expectations tooltip.
+    bslib::tooltip(
+      span(strong("Step 2: Validate data"), bsicons::bs_icon("question-circle")),
+      "Data must be validated before proceeding."),
+    shinyjs::disabled(
+      shinyWidgets::actionBttn(ns("validate_flow"), "Validate data")
+    ),
+
+    strong("Step 3: Indicate units of flow measurement"),
     shinyWidgets::pickerInput(
       inputId = ns("flow_units_flow"),
-      label = "Flow Units of Submitted Data",
+      label = "Flow units of submitted data",
       choices = c(
         "L/s" = "L/s",
         "gal/min (gpm)" = "gal/min",
@@ -39,34 +59,36 @@ mod_flow_analysis_ui <- function(id) {
     bslib::card_body(
       bslib::tooltip(
         span(
-          strong("Step 3 (Optional): Select Input Filter Parameters", bsicons::bs_icon("question-circle"))
+          strong("Step 4 (Optional): Select input filter Parameters", bsicons::bs_icon("question-circle"))
         ),
-        "Set the desired time range and graph title."
+        "These settings will be populated after data validation."
       ),
       shinyWidgets::airDatepickerInput(
         inputId = ns("start_date_flow"),
-        label = "Start Date"
+        label = "Start date"
       ),
       shinyWidgets::timeInput(
         inputId = ns("start_hour_flow"),
-        label = "Start Time"
+        label = "Start time"
       ),
       shinyWidgets::airDatepickerInput(
         inputId = ns("end_date_flow"),
-        label = "End Date"
+        label = "End date"
       ),
       shinyWidgets::timeInput(
         inputId = ns("end_hour_flow"),
-        label = "End Time"
+        label = "End time"
       ),
       textInput(
         inputId = ns("graph_title_flow"),
-        label = "Graph Title",
-        placeholder = "Enter an optional title for the graph"
+        label = "Input a title for the graph (optional)",
+        placeholder = NULL
       ),
-      shinyWidgets::actionBttn(
-        inputId = ns("submit_flow"),
-        label = "Submit"
+      shinyjs::disabled(
+        shinyWidgets::actionBttn(
+          inputId = ns("submit_flow"),
+          label = "Submit"
+        )
       )
     )
   )
@@ -128,7 +150,6 @@ mod_flow_analysis_ui <- function(id) {
     sidebar = sidebar,
     main_panel
   )
-
 }
 
 
@@ -140,10 +161,39 @@ mod_flow_analysis_server <- function(id) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
-    read_excel_allsheets <- function(filename) {
-      sheets <- readxl::excel_sheets(filename)
-      setNames(lapply(sheets, function(sheet) readxl::read_excel(filename, sheet = sheet)), sheets)
-    }
+    # When a file is uploaded, enable the Validate Data button and disable Submit until validated.
+    observeEvent(input$flow_file, {
+      req(input$flow_file)
+      shinyjs::enable("validate_flow")
+      shinyjs::disable("submit_flow")
+    })
+
+    # Validate the file when the user clicks the Validate Data button.
+    observeEvent(input$validate_flow, {
+      req(input$flow_file)
+      errors <- validate_flow_file(input$flow_file$datapath)
+      if (length(errors) > 0) {
+        showModal(modalDialog(
+          title = "Validation Error",
+          pre(paste(errors, collapse = "\n")),
+          easyClose = TRUE,
+          footer = modalButton("Close")
+        ))
+        shinyjs::disable("submit_flow")
+      } else {
+        showModal(modalDialog(
+          title = "Validation Successful",
+          "The uploaded file has been validated successfully.",
+          easyClose = TRUE,
+          footer = modalButton("Close")
+        ))
+        shinyjs::enable("submit_flow")
+      }
+    })
+
+    # --------------------------------------------------------------------------
+    # Existing Code: Read in the file and update date/time inputs.
+    # --------------------------------------------------------------------------
 
     observeEvent(input$flow_file, {
       req(input$flow_file)
@@ -195,8 +245,8 @@ mod_flow_analysis_server <- function(id) {
       sheets <- data_input()
       required_sheets <- c("inflow1", "inflow2", "bypass", "outflow")
       payload_list <- list()
-      for(sheet in required_sheets) {
-        if(sheet %in% names(sheets)) {
+      for (sheet in required_sheets) {
+        if (sheet %in% names(sheets)) {
           df <- sheets[[sheet]]
           df <- df %>% dplyr::select(datetime, flow) %>% dplyr::arrange(datetime)
           payload_list[[sheet]] <- list(
@@ -333,7 +383,7 @@ mod_flow_analysis_server <- function(id) {
           )
         )
         df <- plot_data()
-        # Filter based on the selected flow types
+        # Filter based on the selected flow types.
         if (!is.null(input$choose_graph_flow) && length(input$choose_graph_flow) > 0) {
           df <- df %>% dplyr::filter(flow_type %in% input$choose_graph_flow)
         }
@@ -348,7 +398,6 @@ mod_flow_analysis_server <- function(id) {
       }
     )
 
-    # --- Download Handler for Flow Table ---
     output$download_table_flow <- downloadHandler(
       filename = function() {
         paste0("flow_table_", Sys.Date(), ".csv")
@@ -366,7 +415,6 @@ mod_flow_analysis_server <- function(id) {
       }
     )
 
-    # --- Download Handler for Flow Table in SMC Format ---
     output$download_table_smc_flow <- downloadHandler(
       filename = function() {
         paste0("flow_table_smc_", Sys.Date(), ".csv")
@@ -409,5 +457,6 @@ mod_flow_analysis_server <- function(id) {
     )
   })
 }
+
 
 

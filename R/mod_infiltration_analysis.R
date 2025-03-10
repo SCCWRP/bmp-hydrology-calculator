@@ -11,29 +11,28 @@
 mod_infiltration_analysis_ui <- function(id) {
   ns <- NS(id)
   sidebar <- bslib::sidebar(
-    width = "17%",
+    width = "20%",
     open = "always",
     class = "html-fill-container",
     bslib::tooltip(
-      span(strong("Step 1: Upload data"), bsicons::bs_icon("question-circle")),
-      "Check Data Requirement before uploading the data."
+      span(strong("Step 1: Upload Data"), bsicons::bs_icon("question-circle")),
+      "Expects a single .xlsx file. See Data Requirements for more info."
     ),
     fileInput(
       ns("file"),
-      "Choose Excel File",
+      label = NULL,
       multiple = FALSE,
       accept = ".xlsx"
     ) |>
       bslib::as_fillable_container(style = "overflow-y:auto", max_height = "200px"),
     bslib::tooltip(
-      span(strong("Step 2: Validate data"), bsicons::bs_icon("question-circle")),
-      "Becomes available after Step 1 is done. Validate data before submitting. If there are errors, you will be prompted to fix them."
-    ),
+      span(strong("Step 2: Validate Data"), bsicons::bs_icon("question-circle")),
+      "Data must be validated before proceeding."),
     shinyjs::disabled(
-      shinyWidgets::actionBttn(ns("validate_infiltration"), "Validate data")
+      shinyWidgets::actionBttn(ns("validate_infiltration"), "Validate Data")
     ),
     bslib::tooltip(
-      span(strong("Step 3: Input depth's unit"), bsicons::bs_icon("question-circle")),
+      span(strong("Step 3: Input Depth's Unit"), bsicons::bs_icon("question-circle")),
       "Note that the rate will be <your-unit>/hr"
     ),
     shinyjs::disabled(
@@ -45,7 +44,7 @@ mod_infiltration_analysis_ui <- function(id) {
       )
     ),
     bslib::tooltip(
-      span(strong("Step 4: Submit data"), bsicons::bs_icon("question-circle")),
+      span(strong("Step 4: Submit Data"), bsicons::bs_icon("question-circle")),
       "Becomes available after Step 2 is done. Submit data when validation is successful."
     ),
     shinyjs::disabled(shinyWidgets::actionBttn(ns("submit_infiltration"), "Submit")),
@@ -183,14 +182,14 @@ mod_infiltration_analysis_server <- function(id) {
 
       # Show a modal indicating that validation is in progress.
       showModal(modalDialog(
-        title = "Validating your data",
-        "Please wait while we validate your data. This might take a while depending on the data'size...",
+          title = "Validation Successful",
+          "The uploaded file has been validated successfully.",
         footer = NULL,
         easyClose = FALSE
       ))
       removeModal()
       # Run validation.
-      result <- validate_file(input$file$datapath)
+      result <- validate_infiltration_file(input$file$datapath)
 
       # Remove the "Validating your data" modal.
       removeModal()
@@ -220,8 +219,8 @@ mod_infiltration_analysis_server <- function(id) {
       } else {
         validatedData(result$valid_data)
         showModal(modalDialog(
-          title = "Data Check Success",
-          "Data are clean!",
+          title = "Validation Successful",
+          "The uploaded file has been validated successfully.",
           easyClose = TRUE,
           footer = modalButton("Close")
         ))

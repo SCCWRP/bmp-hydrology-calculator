@@ -10,7 +10,7 @@
 
 
 about_text <- "
-This web application has been developed to enable consistent, transparent, and easily applied calculations of rainfall, flow, and infiltration characteristics during stormwater best management practice (BMP) monitoring studies. It provides three types of analyses:
+This web application has been developed to enable consistent, transparent, and easily applied calculations of rainfall, flow, and infiltration for stormwater best management practice (BMP) monitoring studies. It provides three types of analyses:
 
 1. **Rainfall Analysis**
    Generates the cumulative rainfall depth, rainfall duration, average rainfall intensity, and the maximum rainfall intensity over specified durations (e.g., 5 or 10 minutes) based on a user-uploaded hydrograph.
@@ -19,7 +19,7 @@ This web application has been developed to enable consistent, transparent, and e
    Calculates hydrograph statistics including total runoff volume, runoff duration, and the peak (maximum) flow rate. If multiple hydrographs are provided for a single event (e.g., BMP inflow, outflow, and bypass), additional combined statistics are determined.
 
 3. **Infiltration Analysis**
-   To be added later
+   Calculates infiltration rate through the BMPs based on ponding depth measured
 
 This approach ensures that essential stormwater BMP metrics (rainfall intensity, runoff volume, infiltration rates, etc.) are derived using transparent and reproducible methods, all within a unified web-based environment.
 
