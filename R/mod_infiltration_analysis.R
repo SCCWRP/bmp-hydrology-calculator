@@ -128,19 +128,8 @@ mod_infiltration_analysis_server <- function(id) {
     observeEvent(input$validate_infiltration, {
       req(input$file)
 
-      # Show a modal indicating that validation is in progress.
-      showModal(modalDialog(
-          title = "Validation Successful",
-          "The uploaded file has been validated successfully.",
-        footer = NULL,
-        easyClose = FALSE
-      ))
-      removeModal()
       # Run validation.
       result <- validate_infiltration_file(input$file$datapath)
-
-      # Remove the "Validating your data" modal.
-      removeModal()
 
       if (length(result$errors) > 0) {
         # Combine error messages from all sheets.
@@ -250,6 +239,7 @@ mod_infiltration_analysis_server <- function(id) {
       results_list <- list()
 
       # Loop through each validated sheet.
+      # Loop through each validated sheet.
       for (sheet in names(valid_data)) {
         tryCatch({
           data_df <- valid_data[[sheet]]
@@ -257,14 +247,14 @@ mod_infiltration_analysis_server <- function(id) {
           df$datetime <- as.character(as.POSIXct(df$datetime, tz = "UTC"))
 
           # Use constants from the UI.
-          SMOOTHING_WINDOW     <- input$smoothing_window
-          REGRESSION_WINDOW    <- input$regression_window
+          SMOOTHING_WINDOW <- input$smoothing_window
+          REGRESSION_WINDOW <- input$regression_window
           REGRESSION_THRESHOLD <- input$regression_threshold
 
           payload <- list(
             data = df,
-            SMOOTHING_WINDOW     = SMOOTHING_WINDOW,
-            REGRESSION_WINDOW    = REGRESSION_WINDOW,
+            SMOOTHING_WINDOW = SMOOTHING_WINDOW,
+            REGRESSION_WINDOW = REGRESSION_WINDOW,
             REGRESSION_THRESHOLD = REGRESSION_THRESHOLD
           )
 
@@ -276,7 +266,6 @@ mod_infiltration_analysis_server <- function(id) {
                                  httr::content_type_json())
 
           if (httr::status_code(response) != 200) {
-            # If one sheet fails, store an error message.
             results_list[[sheet]] <- list(error = paste("API request failed with status:", httr::status_code(response)))
             next
           }
@@ -332,28 +321,6 @@ mod_infiltration_analysis_server <- function(id) {
             }
           }
 
-          ## Create the plot.
-          p <- ggplot2::ggplot() +
-            ggplot2::geom_line(
-              data = df_long,
-              ggplot2::aes(x = datetime, y = depth, color = paste("Original data", piezometer)),
-              size = 1.5
-            ) +
-            { if (nrow(best_fit_df) > 0)
-              ggplot2::geom_line(
-                data = best_fit_df,
-                ggplot2::aes(x = datetime, y = best_fit, color = paste("Regression Fits", piezometer)),
-                linetype = "dashed",
-                size = 1.5
-              )
-              else NULL } +
-            ggplot2::labs(
-              title = sheet,
-              x = "Datetime",
-              y = paste("Depth (", input$depth_unit_infiltration, ")", sep=""),
-              color = "Piezometer"
-            )
-
           ## Prepare a table of metrics.
           metrics_list <- list()
           if (!is.null(calc_results)) {
@@ -371,6 +338,40 @@ mod_infiltration_analysis_server <- function(id) {
           }
           metrics_df <- do.call(rbind, metrics_list)
 
+          ### **Validation Checks for `best_fit_df` and `metrics_df`**
+          if (nrow(best_fit_df) == 0 || any(is.infinite(best_fit_df$best_fit)) ||
+              is.null(metrics_df) || nrow(metrics_df) == 0 || any(is.infinite(metrics_df$Infiltration_rate))) {
+
+            showModal(modalDialog(
+              title = "Unable to Calculate Infiltration Rate",
+              paste("Unable to calculate infiltration rate for this sheet:", sheet),
+              easyClose = TRUE,
+              footer = modalButton("Close")
+            ))
+
+            next  # **Skip adding this sheet to results_list and selectInput**
+          }
+
+          ## Create the plot.
+          p <- ggplot2::ggplot() +
+            ggplot2::geom_line(
+              data = df_long,
+              ggplot2::aes(x = datetime, y = depth, color = paste("Original data", piezometer)),
+              size = 1.5
+            ) +
+            ggplot2::geom_line(
+              data = best_fit_df,
+              ggplot2::aes(x = datetime, y = best_fit, color = paste("Regression Fits", piezometer)),
+              linetype = "dashed",
+              size = 1.5
+            ) +
+            ggplot2::labs(
+              title = sheet,
+              x = "Datetime",
+              y = paste("Depth (", input$depth_unit_infiltration, ")", sep=""),
+              color = "Piezometer"
+            )
+
           # Store the result for this sheet.
           results_list[[sheet]] <- list(plot = p, table = metrics_df)
 
@@ -386,17 +387,18 @@ mod_infiltration_analysis_server <- function(id) {
         })
       }
 
-
       # Save all analysis results.
       analysisResults(results_list)
 
-      # Now that all sheets are analyzed, update the dropdown and navigate to "Result".
-      sheets <- names(validatedData())
+      # Update the dropdown with only successfully processed sheets.
+      sheets <- names(results_list)
       updateSelectInput(session, "choose_rain_event_infiltration",
-                        choices = sheets, selected = sheets[1])
+                        choices = sheets, selected = if (length(sheets) > 0) sheets[1] else NULL)
+
       updateNavbarPage(session, "main_infiltration", selected = "Result")
 
       removeModal()  # Remove the "Calculating" modal.
+
     })
 
     # Reactive expression to get the selected sheet's analysis result.
