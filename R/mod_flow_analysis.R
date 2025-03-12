@@ -137,6 +137,7 @@ mod_flow_analysis_server <- function(id) {
       errors <- validate_flow_file(input$flow_file$datapath)
       print("errors")
       print(errors)
+
       if (length(errors) > 0) {
         showModal(modalDialog(
           title = "Validation Error",
@@ -153,37 +154,31 @@ mod_flow_analysis_server <- function(id) {
           footer = modalButton("Close")
         ))
         shinyjs::enable("submit_flow")
+
+        # Read in the file and update date/time inputs **only if validation is successful**
+        inflow_data <- readxl::read_excel(input$flow_file$datapath, sheet = "inflow1")
+        outflow_data <- readxl::read_excel(input$flow_file$datapath, sheet = "outflow")
+
+        min_inflow_date <- min(as.Date(inflow_data$datetime))
+        max_inflow_date <- max(as.Date(inflow_data$datetime))
+        shinyWidgets::updateAirDateInput(session, "start_date_flow",
+                                         value = min_inflow_date,
+                                         options = list(minDate = min_inflow_date, maxDate = max_inflow_date))
+
+        min_outflow_date <- min(as.Date(outflow_data$datetime))
+        max_outflow_date <- max(as.Date(outflow_data$datetime))
+        shinyWidgets::updateAirDateInput(session, "end_date_flow",
+                                         value = max_outflow_date,
+                                         options = list(minDate = min_outflow_date, maxDate = max_outflow_date))
+
+        start_time <- format(min(as.POSIXct(inflow_data$datetime)), "%H:%M:%S")
+        shinyWidgets::updateTimeInput(session, "start_hour_flow", value = hms::as_hms(start_time))
+
+        end_time <- format(max(as.POSIXct(outflow_data$datetime)), "%H:%M:%S")
+        shinyWidgets::updateTimeInput(session, "end_hour_flow", value = hms::as_hms(end_time))
       }
     })
 
-    # --------------------------------------------------------------------------
-    # Existing Code: Read in the file and update date/time inputs.
-    # --------------------------------------------------------------------------
-
-    observeEvent(input$flow_file, {
-      req(input$flow_file)
-
-      inflow_data <- readxl::read_excel(input$flow_file$datapath, sheet = "inflow1")
-      outflow_data <- readxl::read_excel(input$flow_file$datapath, sheet = "outflow")
-
-      min_inflow_date <- min(as.Date(inflow_data$datetime))
-      max_inflow_date <- max(as.Date(inflow_data$datetime))
-      shinyWidgets::updateAirDateInput(session, "start_date_flow",
-                                       value = min_inflow_date,
-                                       options = list(minDate = min_inflow_date, maxDate = max_inflow_date))
-
-      min_outflow_date <- min(as.Date(outflow_data$datetime))
-      max_outflow_date <- max(as.Date(outflow_data$datetime))
-      shinyWidgets::updateAirDateInput(session, "end_date_flow",
-                                       value = max_outflow_date,
-                                       options = list(minDate = min_outflow_date, maxDate = max_outflow_date))
-
-      start_time <- format(min(as.POSIXct(inflow_data$datetime)), "%H:%M:%S")
-      shinyWidgets::updateTimeInput(session, "start_hour_flow", value = hms::as_hms(start_time))
-
-      end_time <- format(max(as.POSIXct(outflow_data$datetime)), "%H:%M:%S")
-      shinyWidgets::updateTimeInput(session, "end_hour_flow", value = hms::as_hms(end_time))
-    })
 
     observeEvent(input$submit_flow, {
       showModal(modalDialog("Calculating...", footer = NULL))
