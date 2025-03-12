@@ -32,7 +32,7 @@ mod_infiltration_analysis_ui <- function(id) {
       shinyWidgets::actionBttn(ns("validate_infiltration"), "Validate data")
     ),
     bslib::tooltip(
-      span(strong("Step 3: Input depth's unit"), bsicons::bs_icon("question-circle")),
+      span(strong("Step 3: Select depth's unit of the data"), bsicons::bs_icon("question-circle")),
       "Note that the rate will be <your-unit>/hr"
     ),
     shinyjs::disabled(
@@ -87,69 +87,17 @@ mod_infiltration_analysis_ui <- function(id) {
     )
   )
 
-  main_panel <- bslib::page_navbar(
-    id = ns("main_infiltration"),
-    padding = 0,
-    bslib::nav_panel(
-      title = "Instruction",
-      mod_infiltration_instruction_ui("infiltration_instruction")
-    ),
-    bslib::nav_panel(
-      title = "Method",
-      mod_infiltration_method_ui("infiltration_method")
-    ),
-    bslib::nav_panel(
-      title = "Result",
-      bslib::layout_columns(
-        col_widths = 12,
-        row_heights = c(2, 1),
-        bslib::card(
-          full_screen = FALSE,
-          bslib::card_header(
-            bslib::layout_columns(
-              col_widths = c(6, 6),
-              # Custom label placed in its own column
-              tags$label(
-                "Choose a storm event to view the result:",
-                `for` = ns("choose_rain_event_infiltration"),
-                class = "form-label",
-                style = "margin-top: 0.7rem; font-weight: bold;"  # Bold text
-              ),
-              # Select input without a label
-              selectInput(
-                ns("choose_rain_event_infiltration"),
-                label = NULL,
-                choices = NULL
-              )
-            )
-          ),
-          bslib::card_body(
-            plotOutput(ns("plot_infiltration"), height = "100%")
-          ),
-          bslib::card_footer(
-            bslib::layout_columns(
-              col_widths = c(6, 6),
-              shinyWidgets::downloadBttn(ns("download_plot_infiltration"), "Download this plot"),
-              shinyWidgets::downloadBttn(ns("download_all_plots_infiltration"), "Download all plots")
-            )
-          )
-        ),
-          bslib::card(
-            bslib::card_body(
-              DT::dataTableOutput(ns("table_infiltration"))
-            ),
-            bslib::card_footer(
-              bslib::layout_columns(
-                col_widths = c(6, 6),
-                shinyWidgets::downloadBttn(ns("download_table_infiltration"), "Download this table"),
-                shinyWidgets::downloadBttn(ns("download_all_results_table"), "Download table for all results")
-              )
-            )
-          )
+  main_panel <- bslib::navset_card_underline(
+      id = ns("main_infiltration"),
+      bslib::nav_panel(
+        title = "Instruction",
+        mod_infiltration_instruction_ui("infiltration_instruction")
+      ),
+      bslib::nav_panel(
+        title = "Method",
+        mod_infiltration_method_ui("infiltration_method")
       )
     )
-
-  )
 
   bslib::page_sidebar(
     sidebar = sidebar,
@@ -232,6 +180,63 @@ mod_infiltration_analysis_server <- function(id) {
     # When the user clicks "Submit", process all sheets via the API.
     observeEvent(input$submit_infiltration, {
       req(validatedData())
+      bslib::nav_remove("main_infiltration", target = "Result")
+      bslib::nav_insert(
+        "main_infiltration",
+        target = "Method",
+        select = TRUE,
+        bslib::nav_panel(
+          title = "Result",
+          bslib::layout_columns(
+            col_widths = 12,
+            row_heights = c(2, 1),
+            bslib::card(
+              full_screen = FALSE,
+              bslib::card_header(
+                bslib::layout_columns(
+                  col_widths = c(6, 6),
+                  # Custom label placed in its own column
+                  tags$label(
+                    "Choose a storm event to view the result:",
+                    `for` = ns("choose_rain_event_infiltration"),
+                    class = "form-label",
+                    style = "margin-top: 0.7rem; font-weight: bold;"  # Bold text
+                  ),
+                  # Select input without a label
+                  selectInput(
+                    ns("choose_rain_event_infiltration"),
+                    label = NULL,
+                    choices = NULL
+                  )
+                )
+              ),
+              bslib::card_body(
+                plotOutput(ns("plot_infiltration"), height = "100%")
+              ),
+              bslib::card_footer(
+                bslib::layout_columns(
+                  col_widths = c(6, 6),
+                  shinyWidgets::downloadBttn(ns("download_plot_infiltration"), "Download this plot"),
+                  shinyWidgets::downloadBttn(ns("download_all_plots_infiltration"), "Download all plots")
+                )
+              )
+            ),
+            bslib::card(
+              bslib::card_body(
+                DT::dataTableOutput(ns("table_infiltration"))
+              ),
+              bslib::card_footer(
+                bslib::layout_columns(
+                  col_widths = c(6, 6),
+                  shinyWidgets::downloadBttn(ns("download_table_infiltration"), "Download this table"),
+                  shinyWidgets::downloadBttn(ns("download_all_results_table"), "Download table for all results")
+                )
+              )
+            )
+          )
+        )
+      )
+
 
       # Pop up a "Calculating" modal.
       showModal(modalDialog(

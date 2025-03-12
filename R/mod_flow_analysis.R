@@ -97,7 +97,7 @@ mod_flow_analysis_ui <- function(id) {
     )
   )
 
-  main_panel <- bslib::page_navbar(
+  main_panel <- bslib::navset_card_underline(
     id = ns("main_flow"),
     bslib::nav_panel(
       title = "Instruction",
@@ -106,47 +106,6 @@ mod_flow_analysis_ui <- function(id) {
     bslib::nav_panel(
       title = "Method",
       mod_flow_method_ui("flow_method")
-    ),
-    bslib::nav_panel(
-      title = "Result",
-      bslib::layout_columns(
-        col_widths = 12,
-        row_heights = c(1, 1),
-        bslib::card(
-          full_screen = TRUE,
-          bslib::card_body(
-            plotOutput(ns("flow_plot"), height = "300px")
-          ),
-          bslib::card_footer(
-            bslib::layout_columns(
-              col_widths = c(2, 6, 4),
-              tags$label(
-                "Choose a flow type:",
-                style = "margin-top: 0.7rem; font-weight: bold;"  # Bold text
-              ),
-              shinyWidgets::pickerInput(
-                inputId = ns("choose_graph_flow"),
-                choices = NULL,
-                selected = NULL,
-                multiple = TRUE
-              ),
-              shinyWidgets::downloadBttn(ns("download_plot_flow"), "Download plot")
-            )
-          )
-        ),
-        bslib::card(
-          bslib::card_body(
-            DT::dataTableOutput(ns("flow_table"))
-          ),
-          bslib::card_footer(
-            bslib::layout_columns(
-              col_widths = c(6, 6),
-              shinyWidgets::downloadBttn(ns("download_table_flow"), "Download table"),
-              shinyWidgets::downloadBttn(ns("download_table_smc_flow"), "Download table in SMC format")
-            )
-          )
-        )
-      )
     )
   )
 
@@ -227,8 +186,52 @@ mod_flow_analysis_server <- function(id) {
     })
 
     observeEvent(input$submit_flow, {
-      updateNavbarPage(session, "main_flow", selected = "Result")
       showModal(modalDialog("Calculating...", footer = NULL))
+      bslib::nav_remove("main_flow", target = "Result")
+      bslib::nav_insert(
+        "main_flow", target = "Method", select = TRUE,
+        bslib::nav_panel(
+          title = "Result",
+          bslib::layout_columns(
+            col_widths = 12,
+            row_heights = c(1, 1),
+            bslib::card(
+              full_screen = TRUE,
+              bslib::card_body(
+                plotOutput(ns("flow_plot"), height = "300px")
+              ),
+              bslib::card_footer(
+                bslib::layout_columns(
+                  col_widths = c(2, 6, 4),
+                  tags$label(
+                    "Choose a flow type:",
+                    style = "margin-top: 0.7rem; font-weight: bold;"  # Bold text
+                  ),
+                  shinyWidgets::pickerInput(
+                    inputId = ns("choose_graph_flow"),
+                    choices = NULL,
+                    selected = NULL,
+                    multiple = TRUE
+                  ),
+                  shinyWidgets::downloadBttn(ns("download_plot_flow"), "Download plot")
+                )
+              )
+            ),
+            bslib::card(
+              bslib::card_body(
+                DT::dataTableOutput(ns("flow_table"))
+              ),
+              bslib::card_footer(
+                bslib::layout_columns(
+                  col_widths = c(6, 6),
+                  shinyWidgets::downloadBttn(ns("download_table_flow"), "Download table"),
+                  shinyWidgets::downloadBttn(ns("download_table_smc_flow"), "Download table in SMC format")
+                )
+              )
+            )
+          )
+        )
+      )
     })
 
     # --------------------------------------------------------------------------

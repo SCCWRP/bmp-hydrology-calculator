@@ -64,10 +64,8 @@ mod_rainfall_analysis_ui <- function(id) {
       shinyjs::disabled(shinyWidgets::actionBttn(ns("submit_rainfall"), "Submit"))
     )
   )
-
-  main_panel <- bslib::page_navbar(
+  main_panel <- bslib::navset_card_underline(
     id = ns("main_rainfall"),
-    padding = 0,
     bslib::nav_panel(
       title = "Instruction",
       mod_rainfall_instruction_ui("rainfall_instruction")
@@ -75,53 +73,8 @@ mod_rainfall_analysis_ui <- function(id) {
     bslib::nav_panel(
       title = "Method",
       mod_rainfall_method_ui("rainfall_method")
-    ),
-    bslib::nav_panel(
-      title = "Result",
-      bslib::layout_columns(
-        col_widths = 12,
-        row_heights = c(1, 1),  # Two rows of equal height
-        # --- Upper Half: Plot and Control Buttons ---
-        bslib::card(
-          full_screen = TRUE,
-          bslib::card_body(
-            plotOutput(ns("rainfall_plot"), height = "300px")
-          ),
-          bslib::card_footer(
-            fillable = TRUE,
-            bslib::layout_columns(
-              col_widths = c(2, 6, 4),
-              tags$label(
-                "Choose a storm event:",
-                style = "margin-top: 0.7rem; font-weight: bold;"  # Bold text
-              ),
-              shinyWidgets::pickerInput(
-                inputId = ns("event_selector_rainfall"),
-                choices = NULL,
-                multiple = FALSE
-              ),
-              shinyWidgets::downloadBttn(ns("download_plot_rainfall"), "Download plot")
-            )
-          )
-        ),
-        # --- Lower Half: Table Output ---
-        bslib::card(
-          bslib::card_body(
-            DT::dataTableOutput(ns("rainfall_table"))
-          ),
-          bslib::card_footer(
-            fillable = TRUE,
-            bslib::layout_columns(
-              col_widths = c(6, 6),
-              shinyWidgets::downloadBttn(ns("download_table_rainfall"), "Download table"),
-              shinyWidgets::downloadBttn(ns("download_table_smc_rainfall"), "Download table in SMC format")
-            )
-          )
-        )
-      )
     )
   )
-
   bslib::page_sidebar(
     sidebar = sidebar,
     main_panel
@@ -184,14 +137,60 @@ mod_rainfall_analysis_server <- function(id) {
     # 3. Navigate to Result on Submit
     # ----------------------------------------------------------------------------
     observeEvent(input$submit_rainfall, {
-      updateNavbarPage(session, "main_rainfall", selected = "Result")
+      bslib::nav_remove("main_rainfall", target = "Result")
+      bslib::nav_insert(
+        "main_rainfall", target = "Method", select = TRUE,
+        bslib::nav_panel(
+          title = "Result",
+          bslib::layout_columns(
+            col_widths = 12,
+            row_heights = c(1, 1),  # Two rows of equal height
+            # --- Upper Half: Plot and Control Buttons ---
+            bslib::card(
+              full_screen = TRUE,
+              bslib::card_body(
+                plotOutput(ns("rainfall_plot"), height = "300px")
+              ),
+              bslib::card_footer(
+                fillable = TRUE,
+                bslib::layout_columns(
+                  col_widths = c(2, 6, 4),
+                  tags$label(
+                    "Choose a storm event:",
+                    style = "margin-top: 0.7rem; font-weight: bold;"  # Bold text
+                  ),
+                  shinyWidgets::pickerInput(
+                    inputId = ns("event_selector_rainfall"),
+                    choices = NULL,
+                    multiple = FALSE
+                  ),
+                  shinyWidgets::downloadBttn(ns("download_plot_rainfall"), "Download plot")
+                )
+              )
+            ),
+            # --- Lower Half: Table Output ---
+            bslib::card(
+              bslib::card_body(
+                DT::dataTableOutput(ns("rainfall_table"))
+              ),
+              bslib::card_footer(
+                fillable = TRUE,
+                bslib::layout_columns(
+                  col_widths = c(6, 6),
+                  shinyWidgets::downloadBttn(ns("download_table_rainfall"), "Download table"),
+                  shinyWidgets::downloadBttn(ns("download_table_smc_rainfall"), "Download table in SMC format")
+                )
+              )
+            )
+          )
+        )
+      )
     })
 
     # ----------------------------------------------------------------------------
     # 4. Data Processing Triggered by the Submit Button
     # ----------------------------------------------------------------------------
     data_input <- eventReactive(input$submit_rainfall, {
-      print("user click")
       req(input$rainfall_file)
 
       # Read in the "rainfall_data" sheet and select the expected columns.
@@ -336,6 +335,17 @@ mod_rainfall_analysis_server <- function(id) {
             `Peak 10-min Rainfall Intensity (mm/hr)` = peak_10_min_rainfall_intensity,
             `Peak 60-min Rainfall Intensity (mm/hr)` = peak_60_min_rainfall_intensity,
             `Antecedent Dry Period (hours)` = antecedent_dry_period
+          ) %>%
+          # Now select (or reorder) the desired columns
+          dplyr::select(
+            `Event ID`,
+            `Storm Date`,
+            `Total Rainfall (mm)`,
+            `Average Rainfall Intensity (mm/hr)`,
+            `Peak 5-min Rainfall Intensity (mm/hr)`,
+            `Peak 10-min Rainfall Intensity (mm/hr)`,
+            `Peak 60-min Rainfall Intensity (mm/hr)`,
+            `Antecedent Dry Period (hours)`
           )
       } else {
         data <- data %>%
@@ -348,8 +358,20 @@ mod_rainfall_analysis_server <- function(id) {
             `Peak 10-min Rainfall Intensity (in/hr)` = peak_10_min_rainfall_intensity,
             `Peak 60-min Rainfall Intensity (in/hr)` = peak_60_min_rainfall_intensity,
             `Antecedent Dry Period (hours)` = antecedent_dry_period
+          ) %>%
+          # Now select (or reorder) the desired columns
+          dplyr::select(
+            `Event ID`,
+            `Storm Date`,
+            `Total Rainfall (in)`,
+            `Average Rainfall Intensity (in/hr)`,
+            `Peak 5-min Rainfall Intensity (in/hr)`,
+            `Peak 10-min Rainfall Intensity (in/hr)`,
+            `Peak 60-min Rainfall Intensity (in/hr)`,
+            `Antecedent Dry Period (hours)`
           )
       }
+
       DT::datatable(
         data,
         rownames = FALSE,
