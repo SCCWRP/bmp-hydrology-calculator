@@ -138,3 +138,18 @@ validate_infiltration_file <- function(file_path) {
 
   list(errors = error_report, valid_data = valid_data)
 }
+
+# Helper to handle fatal errors: displays an error modal and stops the app.
+handleFatalError <- function(errorMessage) {
+  showModal(modalDialog(
+    title = "Error",
+    errorMessage,
+    easyClose = FALSE,
+    footer = modalButton("Close")
+  ))
+
+}
+
+
+
+

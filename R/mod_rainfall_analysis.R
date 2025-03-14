@@ -90,17 +90,32 @@ mod_rainfall_analysis_server <- function(id) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
+    # Helper to create the rainfall plot.
+    create_rainfall_plot <- function(df) {
+      ggplot2::ggplot(df, ggplot2::aes(x = hours, y = cumsum)) +
+        ggplot2::geom_line(color = "steelblue", size = 1.5) +
+        ggplot2::labs(
+          x = "Elapsed hours from the first rain tip",
+          y = paste("Cumulative rainfall (", rain_unit(), ")", sep = ""),
+          title = input$title
+        )
+    }
+
     # ----------------------------------------------------------------------------
-    # 1. Enable Validate Button When a File is Uploaded (disable Submit until validation)
+    # 1. Enable Validate Button When a File is Uploaded (disable Submit until validated)
     # ----------------------------------------------------------------------------
     observeEvent(input$rainfall_file, {
-      if (!is.null(input$rainfall_file)) {
-        shinyjs::enable("validate_rainfall")
-        shinyjs::disable("submit_rainfall")
-      } else {
-        shinyjs::disable("validate_rainfall")
-        shinyjs::disable("submit_rainfall")
-      }
+      tryCatch({
+        if (!is.null(input$rainfall_file)) {
+          shinyjs::enable("validate_rainfall")
+          shinyjs::disable("submit_rainfall")
+        } else {
+          shinyjs::disable("validate_rainfall")
+          shinyjs::disable("submit_rainfall")
+        }
+      }, error = function(e) {
+        handleFatalError(paste("Error processing file upload:", e$message))
+      })
     })
 
     # ----------------------------------------------------------------------------
@@ -108,83 +123,86 @@ mod_rainfall_analysis_server <- function(id) {
     # ----------------------------------------------------------------------------
     observeEvent(input$validate_rainfall, {
       req(input$rainfall_file)
-
-      # Call the validation function
-      errors <- validate_rainfall_file(input$rainfall_file$datapath)
-
-      if (length(errors) > 0) {
-        # If errors exist, show an error modal with all error messages
-        showModal(modalDialog(
-          title = "Validation Error",
-          pre(paste(errors, collapse = "\n")),
-          easyClose = TRUE,
-          footer = modalButton("Close")
-        ))
-        shinyjs::disable("submit_rainfall")
-      } else {
-        # If no errors, show success modal and enable the Submit button.
-        showModal(modalDialog(
-          title = "Validation Successful",
-          "The uploaded file has been validated successfully.",
-          easyClose = TRUE,
-          footer = modalButton("Close")
-        ))
-        shinyjs::enable("submit_rainfall")
-      }
+      tryCatch({
+        errors <- validate_rainfall_file(input$rainfall_file$datapath)
+        if (length(errors) > 0) {
+          showModal(modalDialog(
+            title = "Validation Error",
+            pre(paste(errors, collapse = "\n")),
+            easyClose = TRUE,
+            footer = modalButton("Close")
+          ))
+          shinyjs::disable("submit_rainfall")
+        } else {
+          showModal(modalDialog(
+            title = "Validation Successful",
+            "The uploaded file has been validated successfully.",
+            easyClose = TRUE,
+            footer = modalButton("Close")
+          ))
+          shinyjs::enable("submit_rainfall")
+        }
+      }, error = function(e) {
+        handleFatalError(paste("Error during rainfall file validation:", e$message))
+      })
     })
 
     # ----------------------------------------------------------------------------
     # 3. Navigate to Result on Submit
     # ----------------------------------------------------------------------------
     observeEvent(input$submit_rainfall, {
-      bslib::nav_remove("main_rainfall", target = "Result")
-      bslib::nav_insert(
-        "main_rainfall", target = "Method", select = TRUE,
-        bslib::nav_panel(
-          title = "Result",
-          bslib::layout_columns(
-            col_widths = 12,
-            row_heights = c(1, 1),  # Two rows of equal height
-            # --- Upper Half: Plot and Control Buttons ---
-            bslib::card(
-              full_screen = TRUE,
-              bslib::card_body(
-                plotOutput(ns("rainfall_plot"), height = "300px")
-              ),
-              bslib::card_footer(
-                fillable = TRUE,
-                bslib::layout_columns(
-                  col_widths = c(2, 6, 4),
-                  tags$label(
-                    "Choose a storm event:",
-                    style = "margin-top: 0.7rem; font-weight: bold;"  # Bold text
-                  ),
-                  shinyWidgets::pickerInput(
-                    inputId = ns("event_selector_rainfall"),
-                    choices = NULL,
-                    multiple = FALSE
-                  ),
-                  shinyWidgets::downloadBttn(ns("download_plot_rainfall"), "Download plot")
+      tryCatch({
+        bslib::nav_remove("main_rainfall", target = "Result")
+        bslib::nav_insert(
+          "main_rainfall", target = "Method", select = TRUE,
+          bslib::nav_panel(
+            title = "Result",
+            bslib::layout_columns(
+              col_widths = 12,
+              row_heights = c(1, 1),
+              # --- Upper Half: Plot and Control Buttons ---
+              bslib::card(
+                full_screen = TRUE,
+                bslib::card_body(
+                  plotOutput(ns("rainfall_plot"), height = "300px")
+                ),
+                bslib::card_footer(
+                  fillable = TRUE,
+                  bslib::layout_columns(
+                    col_widths = c(2, 6, 4),
+                    tags$label(
+                      "Choose a storm event:",
+                      style = "margin-top: 0.7rem; font-weight: bold;"
+                    ),
+                    shinyWidgets::pickerInput(
+                      inputId = ns("event_selector_rainfall"),
+                      choices = NULL,
+                      multiple = FALSE
+                    ),
+                    shinyWidgets::downloadBttn(ns("download_plot_rainfall"), "Download plot")
+                  )
                 )
-              )
-            ),
-            # --- Lower Half: Table Output ---
-            bslib::card(
-              bslib::card_body(
-                DT::dataTableOutput(ns("rainfall_table"))
               ),
-              bslib::card_footer(
-                fillable = TRUE,
-                bslib::layout_columns(
-                  col_widths = c(6, 6),
-                  shinyWidgets::downloadBttn(ns("download_table_rainfall"), "Download table"),
-                  shinyWidgets::downloadBttn(ns("download_table_smc_rainfall"), "Download table in SMC format")
+              # --- Lower Half: Table Output ---
+              bslib::card(
+                bslib::card_body(
+                  DT::dataTableOutput(ns("rainfall_table"))
+                ),
+                bslib::card_footer(
+                  fillable = TRUE,
+                  bslib::layout_columns(
+                    col_widths = c(6, 6),
+                    shinyWidgets::downloadBttn(ns("download_table_rainfall"), "Download table"),
+                    shinyWidgets::downloadBttn(ns("download_table_smc_rainfall"), "Download table in SMC format")
+                  )
                 )
               )
             )
           )
         )
-      )
+      }, error = function(e) {
+        handleFatalError(paste("Error processing submit event:", e$message))
+      })
     })
 
     # ----------------------------------------------------------------------------
@@ -192,76 +210,94 @@ mod_rainfall_analysis_server <- function(id) {
     # ----------------------------------------------------------------------------
     data_input <- eventReactive(input$submit_rainfall, {
       req(input$rainfall_file)
-
-      # Read in the "rainfall_data" sheet and select the expected columns.
-      user_data <- readxl::read_excel(input$rainfall_file$datapath, sheet = "rainfall_data")
-      user_data <- user_data %>% dplyr::select(datetime, rain)
-      user_data
+      tryCatch({
+        user_data <- readxl::read_excel(input$rainfall_file$datapath, sheet = "rainfall_data")
+        user_data <- user_data %>% dplyr::select(datetime, rain)
+        user_data
+      }, error = function(e) {
+        handleFatalError(paste("Error reading rainfall file:", e$message))
+      })
     })
 
     payload <- eventReactive(input$submit_rainfall, {
       req(data_input())
-      user_data <- data_input() %>% dplyr::arrange(datetime)
-      list(rain = user_data) %>%
-        jsonlite::toJSON(dataframe = "columns", POSIXt = "ISO8601", auto_unbox = TRUE)
+      tryCatch({
+        user_data <- data_input() %>% dplyr::arrange(datetime)
+        list(rain = user_data) %>%
+          jsonlite::toJSON(dataframe = "columns", POSIXt = "ISO8601", auto_unbox = TRUE)
+      }, error = function(e) {
+        handleFatalError(paste("Error preparing payload:", e$message))
+      })
     })
 
     response <- eventReactive(input$submit_rainfall, {
       req(payload())
-      showModal(modalDialog("Calculating...", footer = NULL))
-      res <- httr::POST(
-        "https://nexus.sccwrp.org/bmp_hydrology/api/rain",
-        body = payload(),
-        encode = "json",
-        httr::content_type_json()
-      )
-      content <- httr::content(res)
-      removeModal()
-      content
+      tryCatch({
+        showModal(modalDialog("Calculating...", footer = NULL))
+        res <- httr::POST(
+          "https://nexus.sccwrp.org/bmp_hydrology/api/rain",
+          body = payload(),
+          encode = "json",
+          httr::content_type_json()
+        )
+        content <- httr::content(res)
+        removeModal()
+        content
+      }, error = function(e) {
+        handleFatalError(paste("Error in API request:", e$message))
+      })
     })
 
     statistics <- eventReactive(input$submit_rainfall, {
       req(response())
-      response()$statistics %>%
-        tibble::as_tibble() %>%
-        tidyr::unnest(
-          cols = c(
+      tryCatch({
+        response()$statistics %>%
+          tibble::as_tibble() %>%
+          tidyr::unnest(
+            cols = c(
+              first_rain,
+              last_rain,
+              total_rainfall,
+              avg_rainfall_intensity,
+              peak_5_min_rainfall_intensity,
+              peak_10_min_rainfall_intensity,
+              peak_60_min_rainfall_intensity,
+              antecedent_dry_period
+            )
+          ) %>%
+          dplyr::arrange(first_rain) %>%
+          dplyr::mutate(
+            first_rain = lubridate::as_datetime(first_rain),
+            last_rain = lubridate::as_datetime(last_rain),
+            event = dplyr::row_number()
+          ) %>%
+          dplyr::select(
+            event,
             first_rain,
             last_rain,
             total_rainfall,
             avg_rainfall_intensity,
             peak_5_min_rainfall_intensity,
             peak_10_min_rainfall_intensity,
-            peak_60_min_rainfall_intensity,
-            antecedent_dry_period
+            antecedent_dry_period,
+            peak_60_min_rainfall_intensity
           )
-        ) %>%
-        dplyr::arrange(first_rain) %>%
-        dplyr::mutate(
-          first_rain = lubridate::as_datetime(first_rain),
-          last_rain = lubridate::as_datetime(last_rain),
-          event = dplyr::row_number()
-        ) %>%
-        dplyr::select(
-          event,
-          first_rain,
-          last_rain,
-          total_rainfall,
-          avg_rainfall_intensity,
-          peak_5_min_rainfall_intensity,
-          peak_10_min_rainfall_intensity,
-          antecedent_dry_period,
-          peak_60_min_rainfall_intensity
-        )
+      }, error = function(e) {
+        handleFatalError(paste("Error processing statistics:", e$message))
+      })
     })
 
     plot_data <- eventReactive(input$submit_rainfall, {
       req(data_input())
-      data_input() %>%
-        dplyr::mutate(
-          cumsum = cumsum(rain),
-          hours = as.numeric(difftime(datetime, min(datetime), units = "hours"))
-        )
+      tryCatch({
+        data_input() %>%
+          dplyr::mutate(
+            cumsum = cumsum(rain),
+            hours = as.numeric(difftime(datetime, min(datetime), units = "hours"))
+          )
+      }, error = function(e) {
+        handleFatalError(paste("Error processing plot data:", e$message))
+      })
     })
 
     rain_unit <- reactive({
@@ -272,129 +308,31 @@ mod_rainfall_analysis_server <- function(id) {
       }
     })
 
+    # ----------------------------------------------------------------------------
+    # 5. Update Storm Event Selector
+    # ----------------------------------------------------------------------------
     observe({
       req(statistics())
-      event_ids <- as.character(statistics()$event)
-      # Add "All events" as the first choice
-      event_ids <- c("All events", event_ids)
-      shinyWidgets::updatePickerInput(
-        session = session,
-        inputId = "event_selector_rainfall",
-        choices = event_ids,
-        selected = event_ids[1]  # default to "All events"
-      )
+      tryCatch({
+        event_ids <- as.character(statistics()$event)
+        event_ids <- c("All events", event_ids)
+        shinyWidgets::updatePickerInput(
+          session = session,
+          inputId = "event_selector_rainfall",
+          choices = event_ids,
+          selected = event_ids[1]
+        )
+      }, error = function(e) {
+        handleFatalError(paste("Error updating event selector:", e$message))
+      })
     }) |> bindEvent(statistics())
 
     # ----------------------------------------------------------------------------
-    # 5. Output: Plot and DataTable
+    # 6. Output: Plot and DataTable
     # ----------------------------------------------------------------------------
     output$rainfall_plot <- renderPlot({
       req(plot_data())
-      df <- plot_data()
-      selected_event <- input$event_selector_rainfall
-      if (!is.null(selected_event) && selected_event != "All events") {
-        ev <- as.numeric(selected_event)
-        if (!is.null(statistics()) && ev %in% statistics()$event) {
-          event_times <- statistics() %>% dplyr::filter(event == ev)
-          df <- df %>% dplyr::filter(
-            datetime >= event_times$first_rain,
-            datetime <= event_times$last_rain
-          )
-        }
-      }
-      ggplot2::ggplot(df, ggplot2::aes(x = hours, y = cumsum)) +
-        ggplot2::geom_line(color = "steelblue", size = 1.5) +
-        ggplot2::labs(
-          x = "Elapsed hours from the first rain tip",
-          y = paste("Cumulative rainfall (", rain_unit(), ")", sep = ""),
-          title = input$title
-        )
-    })
-
-    output$rainfall_table <- DT::renderDT({
-      req(statistics())
-      data <- statistics() %>%
-        dplyr::select(-last_rain) %>%
-        dplyr::mutate(
-          first_rain = format(as.POSIXct(first_rain), format = "%Y-%m-%d %H:%M:%S"),
-          total_rainfall = round(total_rainfall, 2),
-          avg_rainfall_intensity = round(avg_rainfall_intensity, 2),
-          peak_5_min_rainfall_intensity = round(peak_5_min_rainfall_intensity, 2),
-          peak_10_min_rainfall_intensity = round(peak_10_min_rainfall_intensity, 2),
-          peak_60_min_rainfall_intensity = round(peak_60_min_rainfall_intensity, 2),
-          antecedent_dry_period = round(antecedent_dry_period, 2)
-        )
-      if (as.numeric(input$rainfall_resolution) == 0.1) {
-        data <- data %>%
-          dplyr::rename(
-            `Event ID` = event,
-            `Storm Date` = first_rain,
-            `Total Rainfall (mm)` = total_rainfall,
-            `Average Rainfall Intensity (mm/hr)` = avg_rainfall_intensity,
-            `Peak 5-min Rainfall Intensity (mm/hr)` = peak_5_min_rainfall_intensity,
-            `Peak 10-min Rainfall Intensity (mm/hr)` = peak_10_min_rainfall_intensity,
-            `Peak 60-min Rainfall Intensity (mm/hr)` = peak_60_min_rainfall_intensity,
-            `Antecedent Dry Period (hours)` = antecedent_dry_period
-          ) %>%
-          # Now select (or reorder) the desired columns
-          dplyr::select(
-            `Event ID`,
-            `Storm Date`,
-            `Total Rainfall (mm)`,
-            `Average Rainfall Intensity (mm/hr)`,
-            `Peak 5-min Rainfall Intensity (mm/hr)`,
-            `Peak 10-min Rainfall Intensity (mm/hr)`,
-            `Peak 60-min Rainfall Intensity (mm/hr)`,
-            `Antecedent Dry Period (hours)`
-          )
-      } else {
-        data <- data %>%
-          dplyr::rename(
-            `Event ID` = event,
-            `Storm Date` = first_rain,
-            `Total Rainfall (in)` = total_rainfall,
-            `Average Rainfall Intensity (in/hr)` = avg_rainfall_intensity,
-            `Peak 5-min Rainfall Intensity (in/hr)` = peak_5_min_rainfall_intensity,
-            `Peak 10-min Rainfall Intensity (in/hr)` = peak_10_min_rainfall_intensity,
-            `Peak 60-min Rainfall Intensity (in/hr)` = peak_60_min_rainfall_intensity,
-            `Antecedent Dry Period (hours)` = antecedent_dry_period
-          ) %>%
-          # Now select (or reorder) the desired columns
-          dplyr::select(
-            `Event ID`,
-            `Storm Date`,
-            `Total Rainfall (in)`,
-            `Average Rainfall Intensity (in/hr)`,
-            `Peak 5-min Rainfall Intensity (in/hr)`,
-            `Peak 10-min Rainfall Intensity (in/hr)`,
-            `Peak 60-min Rainfall Intensity (in/hr)`,
-            `Antecedent Dry Period (hours)`
-          )
-      }
-
-      DT::datatable(
-        data,
-        rownames = FALSE,
-        options = list(
-          dom = 't',
-          paging = FALSE,
-          ordering = FALSE
-        )
-      )
-    })
-
-    output$download_plot_rainfall <- downloadHandler(
-      filename = function() {
-        paste0("rainfall_plot_", Sys.Date(), ".png")
-      },
-      content = function(file) {
-        req(plot_data())
-        thematic::thematic_local_theme(
-          thematic::thematic_theme(
-            bg = bslib::bs_get_contrast(bslib::bs_theme(preset = "cosmo"), "secondary"),
-            fg = bslib::bs_get_variables(bslib::bs_theme(preset = "cosmo"), "secondary")
-          )
-        )
+      tryCatch({
         df <- plot_data()
         selected_event <- input$event_selector_rainfall
         if (!is.null(selected_event) && selected_event != "All events") {
@@ -407,26 +345,15 @@ mod_rainfall_analysis_server <- function(id) {
             )
           }
         }
-        p <- ggplot2::ggplot(df, ggplot2::aes(x = hours, y = cumsum)) +
-          ggplot2::geom_line(color = "steelblue", size = 1.5) +
-          ggplot2::labs(
-            x = "Elapsed hours from the first rain tip",
-            y = paste("Cumulative rainfall (", rain_unit(), ")", sep = ""),
-            title = input$title
-          )
-        ggplot2::ggsave(file, plot = p, device = "png", width = 8, height = 6)
-      }
-    )
+        create_rainfall_plot(df)
+      }, error = function(e) {
+        handleFatalError(paste("Error rendering rainfall plot:", e$message))
+      })
+    })
 
-    output$download_table_rainfall <- downloadHandler(
-      filename = function() {
-        if (as.numeric(input$rainfall_resolution) == 0.1) {
-          paste0("rainfall_table_mm_", Sys.Date(), ".csv")
-        } else {
-          paste0("rainfall_table_in_", Sys.Date(), ".csv")
-        }
-      },
-      content = function(file) {
+    output$rainfall_table <- DT::renderDT({
+      req(statistics())
+      tryCatch({
         data <- statistics() %>%
           dplyr::select(-last_rain) %>%
           dplyr::mutate(
@@ -449,6 +376,16 @@ mod_rainfall_analysis_server <- function(id) {
               `Peak 10-min Rainfall Intensity (mm/hr)` = peak_10_min_rainfall_intensity,
               `Peak 60-min Rainfall Intensity (mm/hr)` = peak_60_min_rainfall_intensity,
               `Antecedent Dry Period (hours)` = antecedent_dry_period
+            ) %>%
+            dplyr::select(
+              `Event ID`,
+              `Storm Date`,
+              `Total Rainfall (mm)`,
+              `Average Rainfall Intensity (mm/hr)`,
+              `Peak 5-min Rainfall Intensity (mm/hr)`,
+              `Peak 10-min Rainfall Intensity (mm/hr)`,
+              `Peak 60-min Rainfall Intensity (mm/hr)`,
+              `Antecedent Dry Period (hours)`
             )
         } else {
           data <- data %>%
@@ -461,9 +398,134 @@ mod_rainfall_analysis_server <- function(id) {
               `Peak 10-min Rainfall Intensity (in/hr)` = peak_10_min_rainfall_intensity,
               `Peak 60-min Rainfall Intensity (in/hr)` = peak_60_min_rainfall_intensity,
               `Antecedent Dry Period (hours)` = antecedent_dry_period
+            ) %>%
+            dplyr::select(
+              `Event ID`,
+              `Storm Date`,
+              `Total Rainfall (in)`,
+              `Average Rainfall Intensity (in/hr)`,
+              `Peak 5-min Rainfall Intensity (in/hr)`,
+              `Peak 10-min Rainfall Intensity (in/hr)`,
+              `Peak 60-min Rainfall Intensity (in/hr)`,
+              `Antecedent Dry Period (hours)`
             )
         }
-        write.csv(data, file, row.names = FALSE)
+        DT::datatable(
+          data,
+          rownames = FALSE,
+          options = list(dom = 't', paging = FALSE, ordering = FALSE)
+        )
+      }, error = function(e) {
+        handleFatalError(paste("Error rendering rainfall table:", e$message))
+      })
+    })
+
+    # ----------------------------------------------------------------------------
+    # 7. Download Handlers
+    # ----------------------------------------------------------------------------
+    output$download_plot_rainfall <- downloadHandler(
+      filename = function() {
+        paste0("rainfall_plot_", Sys.Date(), ".png")
+      },
+      content = function(file) {
+        req(plot_data())
+        tryCatch({
+          thematic::thematic_local_theme(
+            thematic::thematic_theme(
+              bg = bslib::bs_get_contrast(bslib::bs_theme(preset = "cosmo"), "secondary"),
+              fg = bslib::bs_get_variables(bslib::bs_theme(preset = "cosmo"), "secondary")
+            )
+          )
+          df <- plot_data()
+          selected_event <- input$event_selector_rainfall
+          if (!is.null(selected_event) && selected_event != "All events") {
+            ev <- as.numeric(selected_event)
+            if (!is.null(statistics()) && ev %in% statistics()$event) {
+              event_times <- statistics() %>% dplyr::filter(event == ev)
+              df <- df %>% dplyr::filter(
+                datetime >= event_times$first_rain,
+                datetime <= event_times$last_rain
+              )
+            }
+          }
+          p <- create_rainfall_plot(df)
+          ggplot2::ggsave(file, plot = p, device = "png", width = 8, height = 6)
+        }, error = function(e) {
+          handleFatalError(paste("Error downloading rainfall plot:", e$message))
+        })
+      }
+    )
+
+    output$download_table_rainfall <- downloadHandler(
+      filename = function() {
+        if (as.numeric(input$rainfall_resolution) == 0.1) {
+          paste0("rainfall_table_mm_", Sys.Date(), ".csv")
+        } else {
+          paste0("rainfall_table_in_", Sys.Date(), ".csv")
+        }
+      },
+      content = function(file) {
+        tryCatch({
+          data <- statistics() %>%
+            dplyr::select(-last_rain) %>%
+            dplyr::mutate(
+              first_rain = format(as.POSIXct(first_rain), format = "%Y-%m-%d %H:%M:%S"),
+              total_rainfall = round(total_rainfall, 2),
+              avg_rainfall_intensity = round(avg_rainfall_intensity, 2),
+              peak_5_min_rainfall_intensity = round(peak_5_min_rainfall_intensity, 2),
+              peak_10_min_rainfall_intensity = round(peak_10_min_rainfall_intensity, 2),
+              peak_60_min_rainfall_intensity = round(peak_60_min_rainfall_intensity, 2),
+              antecedent_dry_period = round(antecedent_dry_period, 2)
+            )
+          if (as.numeric(input$rainfall_resolution) == 0.1) {
+            data <- data %>%
+              dplyr::rename(
+                `Event ID` = event,
+                `Storm Date` = first_rain,
+                `Total Rainfall (mm)` = total_rainfall,
+                `Average Rainfall Intensity (mm/hr)` = avg_rainfall_intensity,
+                `Peak 5-min Rainfall Intensity (mm/hr)` = peak_5_min_rainfall_intensity,
+                `Peak 10-min Rainfall Intensity (mm/hr)` = peak_10_min_rainfall_intensity,
+                `Peak 60-min Rainfall Intensity (mm/hr)` = peak_60_min_rainfall_intensity,
+                `Antecedent Dry Period (hours)` = antecedent_dry_period
+              ) %>%
+              dplyr::select(
+                `Event ID`,
+                `Storm Date`,
+                `Total Rainfall (mm)`,
+                `Average Rainfall Intensity (mm/hr)`,
+                `Peak 5-min Rainfall Intensity (mm/hr)`,
+                `Peak 10-min Rainfall Intensity (mm/hr)`,
+                `Peak 60-min Rainfall Intensity (mm/hr)`,
+                `Antecedent Dry Period (hours)`
+              )
+          } else {
+            data <- data %>%
+              dplyr::rename(
+                `Event ID` = event,
+                `Storm Date` = first_rain,
+                `Total Rainfall (in)` = total_rainfall,
+                `Average Rainfall Intensity (in/hr)` = avg_rainfall_intensity,
+                `Peak 5-min Rainfall Intensity (in/hr)` = peak_5_min_rainfall_intensity,
+                `Peak 10-min Rainfall Intensity (in/hr)` = peak_10_min_rainfall_intensity,
+                `Peak 60-min Rainfall Intensity (in/hr)` = peak_60_min_rainfall_intensity,
+                `Antecedent Dry Period (hours)` = antecedent_dry_period
+              ) %>%
+              dplyr::select(
+                `Event ID`,
+                `Storm Date`,
+                `Total Rainfall (in)`,
+                `Average Rainfall Intensity (in/hr)`,
+                `Peak 5-min Rainfall Intensity (in/hr)`,
+                `Peak 10-min Rainfall Intensity (in/hr)`,
+                `Peak 60-min Rainfall Intensity (in/hr)`,
+                `Antecedent Dry Period (hours)`
+              )
+          }
+          write.csv(data, file, row.names = FALSE)
+        }, error = function(e) {
+          handleFatalError(paste("Error downloading rainfall table:", e$message))
+        })
       }
     )
 
@@ -476,45 +538,48 @@ mod_rainfall_analysis_server <- function(id) {
         }
       },
       content = function(file) {
-        df <- statistics()
-        if (as.numeric(input$rainfall_resolution) == 0.1) {
-          totaldepthunits <- 'mm'
-          onehourpeakrateunit <- 'mm/hr'
-        } else {
-          totaldepthunits <- 'inch'
-          onehourpeakrateunit <- 'inch/hr'
-        }
-        df <- df %>%
-          dplyr::mutate(
-            eventid = event,
-            startdate = as.Date(first_rain),
-            starttime = format(first_rain, "%H:%M:%S"),
-            enddate = as.Date(last_rain),
-            endtime = format(last_rain, "%H:%M:%S"),
-            totaldepth = total_rainfall,
-            totaldepthunits = totaldepthunits,
-            onehourpeakrate = peak_60_min_rainfall_intensity,
-            onehourpeakrateunit = onehourpeakrateunit,
-            antecedentdryperiod = antecedent_dry_period
-          ) %>%
-          dplyr::select(
-            eventid,
-            startdate,
-            starttime,
-            enddate,
-            endtime,
-            totaldepth,
-            totaldepthunits,
-            onehourpeakrate,
-            onehourpeakrateunit,
-            antecedentdryperiod
-          ) %>%
-          dplyr::rename(
-            antecedentdryperiod_days = antecedentdryperiod
-          )
-        write.csv(df, file, row.names = FALSE)
+        tryCatch({
+          df <- statistics()
+          if (as.numeric(input$rainfall_resolution) == 0.1) {
+            totaldepthunits <- 'mm'
+            onehourpeakrateunit <- 'mm/hr'
+          } else {
+            totaldepthunits <- 'inch'
+            onehourpeakrateunit <- 'inch/hr'
+          }
+          df <- df %>%
+            dplyr::mutate(
+              eventid = event,
+              startdate = as.Date(first_rain),
+              starttime = format(first_rain, "%H:%M:%S"),
+              enddate = as.Date(last_rain),
+              endtime = format(last_rain, "%H:%M:%S"),
+              totaldepth = total_rainfall,
+              totaldepthunits = totaldepthunits,
+              onehourpeakrate = peak_60_min_rainfall_intensity,
+              onehourpeakrateunit = onehourpeakrateunit,
+              antecedentdryperiod = antecedent_dry_period
+            ) %>%
+            dplyr::select(
+              eventid,
+              startdate,
+              starttime,
+              enddate,
+              endtime,
+              totaldepth,
+              totaldepthunits,
+              onehourpeakrate,
+              onehourpeakrateunit,
+              antecedentdryperiod
+            ) %>%
+            dplyr::rename(antecedentdryperiod_days = antecedentdryperiod)
+          write.csv(df, file, row.names = FALSE)
+        }, error = function(e) {
+          handleFatalError(paste("Error downloading rainfall SMC table:", e$message))
+        })
       }
     )
   })
 }
+
 

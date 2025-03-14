@@ -41,7 +41,7 @@ mod_rainfall_instruction_ui <- function(id) {
         col_widths = c(4, 4, 4),
         shinyWidgets::downloadBttn(ns("download_demo_1min_rainfall"), "Download 1-min demo data"),
         shinyWidgets::downloadBttn(ns("download_demo_timeoftips_rainfall"), "Download time of tips demo data"),
-        shinyWidgets::downloadBttn(ns("download_rainfall_template"), "Download rainfall template")
+        shinyWidgets::downloadBttn(ns("download_template_rainfall"), "Download rainfall template")
       )
     )
   )
@@ -67,7 +67,7 @@ mod_rainfall_instruction_server <- function(id) {
     output$download_template_rainfall <- downloadHandler(
       filename = "rainfall_template.xlsx",
       content = function(file) {
-        file.copy("inst/extdata/rainfall_template.xlsx", file, overwrite = TRUE)
+        file.copy("inst/extdata/rainfall_template.xlsx", file)
       }
     )
 

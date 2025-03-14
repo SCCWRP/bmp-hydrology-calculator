@@ -378,8 +378,8 @@ mod_infiltration_analysis_server <- function(id) {
         }, error = function(e) {
           # Display an error modal if something goes wrong.
           showModal(modalDialog(
-            title = paste("Error processing sheet:", sheet),
-            paste("An error occurred:", e$message),
+            title = paste("Unable to determine the infiltration rate for sheet:", sheet),
+            paste("Details:", e$message),
             easyClose = TRUE,
             footer = modalButton("Close")
           ))
