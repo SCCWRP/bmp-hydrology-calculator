@@ -61,7 +61,7 @@ mod_flow_analysis_ui <- function(id) {
         span(
           strong("Step 4 (Optional): Select start and end of the hydrograph", bsicons::bs_icon("question-circle"))
         ),
-        "These settings will be populated after data validation."
+        "Autopopulated based on inflow1 and outflow tab."
       ),
       shinyWidgets::airDatepickerInput(
         inputId = ns("start_date_flow"),
@@ -224,7 +224,12 @@ mod_flow_analysis_server <- function(id) {
     # On submission, show a Calculating modal and update navigation.
     observeEvent(input$submit_flow, {
       tryCatch({
-        showModal(modalDialog("Calculating...", modalButton("Close")))
+        showModal(modalDialog(
+          title = "Calculating",
+          "It might take a few minutes, please wait...",
+          easyClose = FALSE,
+          footer = modalButton("Dismiss")
+        ))
         bslib::nav_remove("main_flow", target = "Result")
         bslib::nav_insert(
           "main_flow", target = "Method", select = TRUE,
