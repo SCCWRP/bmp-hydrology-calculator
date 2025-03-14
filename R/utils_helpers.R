@@ -58,13 +58,17 @@ validate_flow_file <- function(file_path) {
       if (ncol(df) != 2 || !all(c("datetime", "flow") %in% names(df))) {
         errors <- c(errors, paste0("Sheet '", sheet, "' must contain exactly two columns: 'datetime' and 'flow'."))
       } else {
-        # Check that "datetime" is of a datetime type.
-        if (!inherits(df$datetime, "POSIXct") && !inherits(df$datetime, "Date")) {
-          errors <- c(errors, paste0("In sheet '", sheet, "', the 'datetime' column must be of datetime type."))
-        }
-        # Check that "flow" is numeric.
-        if (!is.numeric(df$flow)) {
-          errors <- c(errors, paste0("In sheet '", sheet, "', the 'flow' column must be numeric."))
+        # For inflow2 and bypass, allow an empty dataset but still require the correct column names.
+        # If the sheet is non-empty, then check the column datatypes.
+        if (!(sheet %in% c("inflow2", "bypass") && nrow(df) == 0)) {
+          # Check that "datetime" is of a datetime type.
+          if (!inherits(df$datetime, "POSIXct") && !inherits(df$datetime, "Date")) {
+            errors <- c(errors, paste0("In sheet '", sheet, "', the 'datetime' column must be of datetime type."))
+          }
+          # Check that "flow" is numeric.
+          if (!is.numeric(df$flow)) {
+            errors <- c(errors, paste0("In sheet '", sheet, "', the 'flow' column must be numeric."))
+          }
         }
       }
     }
@@ -72,6 +76,7 @@ validate_flow_file <- function(file_path) {
 
   return(errors)
 }
+
 
 
 

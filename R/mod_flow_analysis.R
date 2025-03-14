@@ -59,7 +59,7 @@ mod_flow_analysis_ui <- function(id) {
     bslib::card_body(
       bslib::tooltip(
         span(
-          strong("Step 4 (Optional): Select input filter Parameters", bsicons::bs_icon("question-circle"))
+          strong("Step 4 (Optional): Select start and end of the hydrograph", bsicons::bs_icon("question-circle"))
         ),
         "These settings will be populated after data validation."
       ),
@@ -133,8 +133,16 @@ mod_flow_analysis_server <- function(id) {
           x = "Datetime",
           y = paste("Flow rate (", input$flow_units_flow, ")", sep = ""),
           title = input$graph_title_flow
+        ) +
+        ggplot2::scale_x_datetime(
+          date_breaks = "2 hours",
+          date_labels = "%m/%d %H:%M"
+        ) +
+        ggplot2::theme(
+          axis.text.x = ggplot2::element_text(angle = 90, hjust = 1)
         )
     }
+
 
 
     # When a file is uploaded, enable the Validate Data button and disable Submit.
@@ -153,8 +161,6 @@ mod_flow_analysis_server <- function(id) {
       req(input$flow_file)
       tryCatch({
         errors <- validate_flow_file(input$flow_file$datapath)
-        print("errors")
-        print(errors)
 
         if (length(errors) > 0) {
           showModal(modalDialog(
@@ -218,7 +224,7 @@ mod_flow_analysis_server <- function(id) {
     # On submission, show a Calculating modal and update navigation.
     observeEvent(input$submit_flow, {
       tryCatch({
-        showModal(modalDialog("Calculating...", footer = NULL))
+        showModal(modalDialog("Calculating...", modalButton("Close")))
         bslib::nav_remove("main_flow", target = "Result")
         bslib::nav_insert(
           "main_flow", target = "Method", select = TRUE,
@@ -278,11 +284,15 @@ mod_flow_analysis_server <- function(id) {
       tryCatch({
         all_data <- read_excel_allsheets(input$flow_file$datapath)
         all_data <- Filter(function(df) nrow(df) > 0, all_data)
-        start <- as.POSIXct(paste(input$start_date_flow, as.character(input$start_hour_flow)))
-        end   <- as.POSIXct(paste(input$end_date_flow, as.character(input$end_hour_flow)))
+        start <- as.POSIXct(paste(input$start_date_flow, as.character(input$start_hour_flow)),
+                            format = "%Y-%m-%d %H:%M", tz = 'UTC')
+        end   <- as.POSIXct(paste(input$end_date_flow, as.character(input$end_hour_flow)),
+                            format = "%Y-%m-%d %H:%M", tz = 'UTC')
+
         lapply(all_data, function(df) {
-          df <- df %>% dplyr::mutate(datetime = as.POSIXct(datetime))
+          df <- df %>% dplyr::mutate(datetime = as.POSIXct(datetime), tz = 'UTC')
           dplyr::filter(df, datetime >= start, datetime <= end)
+
         })
       }, error = function(e) {
         handleFatalError(paste("Error processing data input:", e$message))
@@ -349,6 +359,7 @@ mod_flow_analysis_server <- function(id) {
                 start_time = stringr::str_replace(start_time, "T", " "),
                 end_time   = stringr::str_replace(end_time, "T", " ")
               )
+
             return(df)
           } else {
             return(NULL)
