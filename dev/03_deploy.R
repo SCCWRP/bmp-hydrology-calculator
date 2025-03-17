@@ -58,5 +58,5 @@ rsconnect::deployApp(
   appId = rsconnect::deployments(".")$appID,
   lint = FALSE,
   forceUpdate = TRUE,
-  appVisibility = "private"
+  appVisibility = "public"
 )

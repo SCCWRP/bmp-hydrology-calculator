@@ -50,7 +50,7 @@ mod_flow_analysis_ui <- function(id) {
       choices = c(
         "L/s" = "L/s",
         "gal/min (gpm)" = "gal/min",
-        "ft³/s (cfs)" = "ft³/s"
+        "ft³/s (cfs)" = "ft3/s"
       ),
       selected = "L/s",
       width = "200px"
@@ -143,6 +143,21 @@ mod_flow_analysis_server <- function(id) {
         )
     }
 
+    # Initialize a reactive flag to track result generation
+    result_generated <- reactiveVal(FALSE)
+
+    # Only pop up the modal when the flow_units_flow input changes
+    # and a result has already been generated.
+    observeEvent(input$flow_units_flow, {
+      if (result_generated()) {
+        showModal(modalDialog(
+          title = "Notice",
+          "Changes detected for unit flow. If you had generated the result, you must hit Submit button again to generate the updated result.",
+          easyClose = TRUE,
+          footer = modalButton("Dismiss")
+        ))
+      }
+    })
 
 
     # When a file is uploaded, enable the Validate Data button and disable Submit.
@@ -275,6 +290,7 @@ mod_flow_analysis_server <- function(id) {
             )
           )
         )
+        result_generated(TRUE)
       }, error = function(e) {
         handleFatalError(paste("Error processing submit event:", e$message))
       })
@@ -289,20 +305,36 @@ mod_flow_analysis_server <- function(id) {
       tryCatch({
         all_data <- read_excel_allsheets(input$flow_file$datapath)
         all_data <- Filter(function(df) nrow(df) > 0, all_data)
-        start <- as.POSIXct(paste(input$start_date_flow, as.character(input$start_hour_flow)),
-                            format = "%Y-%m-%d %H:%M", tz = 'UTC')
-        end   <- as.POSIXct(paste(input$end_date_flow, as.character(input$end_hour_flow)),
-                            format = "%Y-%m-%d %H:%M", tz = 'UTC')
+        start <- as.POSIXct(
+          paste(input$start_date_flow, as.character(input$start_hour_flow)),
+          format = "%Y-%m-%d %H:%M", tz = 'UTC'
+        )
+        end <- as.POSIXct(
+          paste(input$end_date_flow, as.character(input$end_hour_flow)),
+          format = "%Y-%m-%d %H:%M", tz = 'UTC'
+        )
+
+        # Check if start is before end. If not, pop up a modal and stop further processing.
+        if (start >= end) {
+          showModal(modalDialog(
+            title = "Date Error",
+            "The start date must be before the end date.",
+            easyClose = TRUE,
+            footer = NULL
+          ))
+          stop("Start date must be before end date.")
+        }
 
         lapply(all_data, function(df) {
-          df <- df %>% dplyr::mutate(datetime = as.POSIXct(datetime), tz = 'UTC')
+          df <- df %>%
+            dplyr::mutate(datetime = as.POSIXct(datetime), tz = 'UTC')
           dplyr::filter(df, datetime >= start, datetime <= end)
-
         })
       }, error = function(e) {
         handleFatalError(paste("Error processing data input:", e$message))
       })
     })
+
 
     payload <- eventReactive(input$submit_flow, {
       req(data_input())
@@ -437,6 +469,11 @@ mod_flow_analysis_server <- function(id) {
             "Duration of runoff (h)" = runoff_duration,
             "Runoff volume" = runoff_volume
           )
+
+        # Update column headers to include units
+        names(data)[names(data) == "Peak flow rate"] <- paste0("Peak flow rate (", input$flow_units_flow, ")")
+        names(data)[names(data) == "Runoff volume"] <- paste0("Runoff volume (", sub("/.*", "", input$flow_units_flow), ")")
+
         DT::datatable(
           data,
           rownames = FALSE,
@@ -446,6 +483,7 @@ mod_flow_analysis_server <- function(id) {
         handleFatalError(paste("Error rendering table:", e$message))
       })
     })
+
 
     # ----------------------------
     # Download Handlers
@@ -489,6 +527,11 @@ mod_flow_analysis_server <- function(id) {
               "Duration of runoff (h)" = runoff_duration,
               "Runoff volume" = runoff_volume
             )
+
+          # Update column headers to include units
+          names(df)[names(df) == "Peak flow rate"] <- paste0("Peak flow rate (", input$flow_units_flow, ")")
+          names(df)[names(df) == "Runoff volume"] <- paste0("Runoff volume (", sub("/.*", "", input$flow_units_flow), ")")
+
           write.csv(df, file, row.names = FALSE)
         }, error = function(e) {
           handleFatalError(paste("Error downloading table:", e$message))
@@ -514,9 +557,9 @@ mod_flow_analysis_server <- function(id) {
               dateend = as.Date(end_time),
               timeend = format(end_time, "%H:%M:%S"),
               volumetotal = runoff_volume,
-              volumeunits = input$flow_units_flow,
+              volumeunits = sub("/.*", "", input$flow_units_flow),  # Extracts only the unit before the slash
               peakflowrate = peak_flow_rate,
-              peakflowunits = input$flow_units_flow
+              peakflowunits = input$flow_units_flow  # Full unit for peak flow
             ) %>%
             dplyr::select(
               monitoringstation,
@@ -530,12 +573,16 @@ mod_flow_analysis_server <- function(id) {
               peakflowunits
             ) %>%
             dplyr::mutate(peakflowunits = gsub("L/s", "lps", peakflowunits))
+
           write.csv(df, file, row.names = FALSE)
         }, error = function(e) {
           handleFatalError(paste("Error downloading SMC table:", e$message))
         })
       }
     )
+
+
+
   })
 }
 
