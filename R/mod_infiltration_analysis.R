@@ -169,6 +169,7 @@ mod_infiltration_analysis_server <- function(id) {
     # When the user clicks "Submit", process all sheets via the API.
     observeEvent(input$submit_infiltration, {
       req(validatedData())
+      shinyjs::disable("depth_unit_infiltration")
       bslib::nav_remove("main_infiltration", target = "Result")
       bslib::nav_insert(
         "main_infiltration",
@@ -225,6 +226,7 @@ mod_infiltration_analysis_server <- function(id) {
           )
         )
       )
+
 
 
       # Pop up a "Calculating" modal.
@@ -353,23 +355,48 @@ mod_infiltration_analysis_server <- function(id) {
             next  # **Skip adding this sheet to results_list and selectInput**
           }
 
-          ## Create the plot.
+          # Check if there are any -88 values in best_fit
+          has_undetermined <- any(best_fit_df$best_fit == -88)
+          if (has_undetermined) {
+            metrics_df$Infiltration_rate <- "Undetermined"
+          }
+
+          # Create base plot
           p <- ggplot2::ggplot() +
             ggplot2::geom_line(
               data = df_long,
               ggplot2::aes(x = datetime, y = depth, color = paste("Original data", piezometer)),
               size = 1.5
-            ) +
-            ggplot2::geom_line(
-              data = best_fit_df,
-              ggplot2::aes(x = datetime, y = best_fit, color = paste("Regression Fits", piezometer)),
-              linetype = "dashed",
-              size = 1.5
-            ) +
+            )
+
+          # Add dummy line to include "Regression Fits undetermined" in legend if needed
+          if (has_undetermined) {
+            p <- p +
+              ggplot2::geom_line(
+                data = data.frame(
+                  datetime = as.POSIXct(NA),
+                  best_fit = as.numeric(NA)  # Ensures this is treated as numeric
+                ),
+                ggplot2::aes(x = datetime, y = best_fit, color = "Regression Fits Undetermined. Inf values detected"),
+                linetype = "dashed"
+              )
+          } else {
+            p <- p +
+              ggplot2::geom_line(
+                data = best_fit_df,
+                ggplot2::aes(x = datetime, y = best_fit, color = paste("Regression Fits", piezometer)),
+                linetype = "dashed",
+                size = 1.5
+              )
+          }
+
+
+          # Finalize plot with labels
+          p <- p +
             ggplot2::labs(
               title = sheet,
               x = "Datetime",
-              y = paste("Depth (", input$depth_unit_infiltration, ")", sep=""),
+              y = paste("Depth (", input$depth_unit_infiltration, ")", sep = ""),
               color = "Piezometer"
             )
 
