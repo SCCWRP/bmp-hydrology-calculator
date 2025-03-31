@@ -9,6 +9,16 @@ app_server <- function(input, output, session) {
   ggplot2::theme_set(ggplot2::theme_bw(base_size = 18))
   thematic::thematic_shiny(font = "auto")
 
+  # Show maintenance modal on startup
+  # showModal(
+  #   modalDialog(
+  #     title = "Maintenance Notice",
+  #     "This application is undergoing maintenance until 04/01/2025.",
+  #     easyClose = TRUE,
+  #     footer = modalButton("Close")
+  #   )
+  # )
+
   mod_about_server("about_1")
 
   mod_rainfall_analysis_server("rainfall_analysis_1")
@@ -22,3 +32,4 @@ app_server <- function(input, output, session) {
 
   mod_faq_server("faq_1")
 }
+

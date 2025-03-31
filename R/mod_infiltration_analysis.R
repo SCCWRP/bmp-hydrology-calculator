@@ -263,7 +263,8 @@ mod_infiltration_analysis_server <- function(id) {
           response <- httr::POST(url,
                                  body = payload_json,
                                  encode = "json",
-                                 httr::content_type_json())
+                                 httr::content_type_json(),
+                                 config = httr::config(ssl_verifypeer = FALSE))
 
           if (httr::status_code(response) != 200) {
             results_list[[sheet]] <- list(error = paste("API request failed with status:", httr::status_code(response)))

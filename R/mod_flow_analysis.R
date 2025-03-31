@@ -365,7 +365,8 @@ mod_flow_analysis_server <- function(id) {
           "https://nexus.sccwrp.org/bmp_hydrology/api/flow",
           body = payload(),
           encode = "json",
-          httr::content_type_json()
+          httr::content_type_json(),
+          config = httr::config(ssl_verifypeer = FALSE)
         )
         content <- httr::content(res)
         removeModal()
