@@ -12,7 +12,7 @@ mod_flow_method_ui <- function(id) {
 
   # Fetch the markdown text from GitHub.
   # (Replace this URL with a flow-specific README if needed.)
-  markdown_text <- httr::GET("https://raw.githubusercontent.com/SCCWRP/rainfall_flow_calculator_api/master/README_flow.md") |>
+  markdown_text <- httr::GET("https://raw.githubusercontent.com/SCCWRP/bmp-hydrology-calculator/master/README_flow.md") |>
     httr::content(as = "text", encoding = "UTF-8")
   bslib::card(
     bslib::card_body(

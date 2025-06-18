@@ -12,7 +12,7 @@ mod_infiltration_method_ui <- function(id) {
 
   # Fetch the markdown text from GitHub or another source.
   # Adjust the URL to point to your infiltration-specific README if needed.
-  markdown_text <- httr::GET("https://raw.githubusercontent.com/SCCWRP/rainfall_flow_calculator_api/master/README_infiltration.md") |>
+  markdown_text <- httr::GET("https://raw.githubusercontent.com/SCCWRP/bmp-hydrology-calculator/master/README_infiltration.md") |>
     httr::content(as = "text", encoding = "UTF-8")
   bslib::card(
     bslib::card_body(
