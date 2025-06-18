@@ -243,18 +243,11 @@ mod_flow_analysis_server <- function(id) {
           min_ts <- as.POSIXct(min_ts, origin = "1970-01-01", tz = "UTC")
           max_ts <- as.POSIXct(max_ts, origin = "1970-01-01", tz = "UTC")
 
-          print(min_ts)
-          print(max_ts)
           min_date <- as.Date(min_ts)
           max_date <- as.Date(max_ts)
-          print(min_date)
-          print(max_date)
-
 
           start_hr <- format(min_ts, "%H:%M:%S")
           end_hr <- format(max_ts, "%H:%M:%S")
-          print(start_hr)
-          print(end_hr)
 
           # ---------------------------------------------------------------------------
           # 3. Update widgets ----------------------------------------------------------
@@ -449,7 +442,6 @@ mod_flow_analysis_server <- function(id) {
           }
         })
         my_content <- dplyr::bind_rows(my_content)
-        print(my_content)
         my_content <- my_content %>%
           dplyr::mutate(flow_type = factor(flow_type, levels = c("inflow1", "inflow2", "bypass", "outflow"))) %>%
           dplyr::arrange(flow_type)
@@ -481,9 +473,11 @@ mod_flow_analysis_server <- function(id) {
       req(plot_data())
       tryCatch({
         flow_types <- unique(plot_data()$flow_type)
-        shinyWidgets::updatePickerInput(session, "choose_graph_flow",
-                                        choices = flow_types,
-                                        selected = flow_types)
+        shinyWidgets::updatePickerInput(
+          session, "choose_graph_flow",
+          choices = flow_types,
+          selected = flow_types
+        )
       }, error = function(e) {
         handleFatalError(paste("Error updating flow type picker:", e$message))
       })
@@ -509,11 +503,11 @@ mod_flow_analysis_server <- function(id) {
       req(statistics())
       tryCatch({
         data <- statistics() %>%
-          dplyr::select(flow_type, peak_flow_rate, runoff_duration, runoff_volume) %>%
+          dplyr::select(flow_type, runoff_duration, runoff_volume, peak_flow_rate) %>%
           dplyr::rename(
             "Type of flow" = flow_type,
             "Peak flow rate" = peak_flow_rate,
-            "Duration of runoff (h)" = runoff_duration,
+            "Duration of runoff (hr)" = runoff_duration,
             "Runoff volume" = runoff_volume
           )
 

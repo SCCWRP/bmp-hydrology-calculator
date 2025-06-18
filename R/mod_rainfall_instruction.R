@@ -10,18 +10,20 @@
 #'
 # Example snippet for bslib::card_body
 my_markdown_text <- "
+Hyetograph data for up to approximately one continuous month (including multiple rain events) may be uploaded in a single file. Larger/longer records must be parsed for separate uploads. The calculator determines statistics for individual events.
 
-It is advised to copy and paste the rainfall data, whether it is in the form of 1-minute or time-of-tips data, into the downloaded template. It is important to note that the rain gauge values must be entered into the designated rain column within the template. A user can submit a continuous rainfall record without skipping any timestamps, containing multiple events in a single file.
+It is advised to copy and paste the rainfall data, whether it is in the form of 1-minute or time-of-tips data, into the downloaded template. It is important to note that the rain gauge values must be entered into the designated rain column within the template.
 
 - Download 1-min demo data
 - Download time of tips demo data
 - Download rainfall template
 
 **Data Requirements:**
-The uploaded Excel spreadsheet must conform to the following requirements:
-1. The timestamp should be in 24-hour format (mm/dd/yy hh:mm:ss).
-2. Each tab must contain exactly two columns, one for the sample timestamps data and one for the associated values.
-3. **The column names and the tab names must not be changed from the template**.
+There are two worksheets in the template: an instruction tab (Instructions) and a data tab (rainfall_data). The uploaded Excel spreadsheet must conform to the following requirements:
+
+1. The data tab must contain exactly two columns, one for the measurement timestamps data and one for the associated values.
+2. The timestamp should be in 24-hour format (mm/dd/yy hh:mm:ss).
+3. **The column names and the tab names must not be changed from the template.**.
 "
 
 

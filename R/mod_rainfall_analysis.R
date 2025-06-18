@@ -36,13 +36,13 @@ mod_rainfall_analysis_ui <- function(id) {
 
     # Step 3: Choose a Rainfall Resolution
     bslib::tooltip(
-      span(strong("Step 3: Choose a rainfall resolution"), bsicons::bs_icon("question-circle")),
-      "Select the resolution for the rainfall data."
+      span(strong("Step 3: Choose a rainfall unit"), bsicons::bs_icon("question-circle")),
+      "Select the unit for the rainfall data."
     ),
     selectInput(
       ns("rainfall_resolution"),
       label = NULL,
-      choices = c("0.01 inch" = 0.01, "0.1 mm" = 0.1),
+      choices = c("inch" = 0.01, "mm" = 0.1),
       selected = 0.01
     ),
 
@@ -376,7 +376,7 @@ mod_rainfall_analysis_server <- function(id) {
               `Peak 5-min Rainfall Intensity (mm/hr)` = peak_5_min_rainfall_intensity,
               `Peak 10-min Rainfall Intensity (mm/hr)` = peak_10_min_rainfall_intensity,
               `Peak 60-min Rainfall Intensity (mm/hr)` = peak_60_min_rainfall_intensity,
-              `Antecedent Dry Period (hours)` = antecedent_dry_period
+              `Antecedent Dry Period (hr)` = antecedent_dry_period
             ) %>%
             dplyr::select(
               `Event ID`,
@@ -386,7 +386,7 @@ mod_rainfall_analysis_server <- function(id) {
               `Peak 5-min Rainfall Intensity (mm/hr)`,
               `Peak 10-min Rainfall Intensity (mm/hr)`,
               `Peak 60-min Rainfall Intensity (mm/hr)`,
-              `Antecedent Dry Period (hours)`
+              `Antecedent Dry Period (hr)`
             )
         } else {
           data <- data %>%
@@ -398,7 +398,7 @@ mod_rainfall_analysis_server <- function(id) {
               `Peak 5-min Rainfall Intensity (in/hr)` = peak_5_min_rainfall_intensity,
               `Peak 10-min Rainfall Intensity (in/hr)` = peak_10_min_rainfall_intensity,
               `Peak 60-min Rainfall Intensity (in/hr)` = peak_60_min_rainfall_intensity,
-              `Antecedent Dry Period (hours)` = antecedent_dry_period
+              `Antecedent Dry Period (hr)` = antecedent_dry_period
             ) %>%
             dplyr::select(
               `Event ID`,
@@ -408,7 +408,7 @@ mod_rainfall_analysis_server <- function(id) {
               `Peak 5-min Rainfall Intensity (in/hr)`,
               `Peak 10-min Rainfall Intensity (in/hr)`,
               `Peak 60-min Rainfall Intensity (in/hr)`,
-              `Antecedent Dry Period (hours)`
+              `Antecedent Dry Period (hr)`
             )
         }
         DT::datatable(
@@ -491,7 +491,7 @@ mod_rainfall_analysis_server <- function(id) {
                 `Peak 5-min Rainfall Intensity (mm/hr)` = peak_5_min_rainfall_intensity,
                 `Peak 10-min Rainfall Intensity (mm/hr)` = peak_10_min_rainfall_intensity,
                 `Peak 60-min Rainfall Intensity (mm/hr)` = peak_60_min_rainfall_intensity,
-                `Antecedent Dry Period (hours)` = antecedent_dry_period
+                `Antecedent Dry Period (hr)` = antecedent_dry_period
               ) %>%
               dplyr::select(
                 `Event ID`,

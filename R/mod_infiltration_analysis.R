@@ -227,8 +227,6 @@ mod_infiltration_analysis_server <- function(id) {
         )
       )
 
-
-
       # Pop up a "Calculating" modal.
       showModal(modalDialog(
         title = "Calculating",
@@ -510,7 +508,7 @@ mod_infiltration_analysis_server <- function(id) {
             fg = bslib::bs_get_variables(bslib::bs_theme(preset = "cosmo"), "secondary")
           )
         )
-        ggplot2::ggsave(file, plot = selected_result()$plot + theme_bw(base_size = 20),   width = 1920,
+        ggplot2::ggsave(file, plot = selected_result()$plot + theme_bw(base_size = 20), width = 1920,
                         height = 1017,
                         units = "px",
                         dpi = 93)
@@ -605,7 +603,6 @@ mod_infiltration_analysis_server <- function(id) {
           "Duration_hrs"      = "Duration (hrs)",
           "Average_depth"     = paste("Average Depth (", input$depth_unit_infiltration, ")", sep="")
         )
-
         names(dt) <- sapply(names(dt), function(x) {
           if (x %in% names(col_mapping)) col_mapping[[x]] else x
         })
@@ -641,7 +638,7 @@ mod_infiltration_analysis_server <- function(id) {
     # --- Download Handler for Individual Storm Table ---
     output$download_table_infiltration <- downloadHandler(
       filename = function() {
-        paste0("data_table_", Sys.Date(), ".csv")
+        paste0("infiltration_table_", Sys.Date(), ".csv")
       },
       content = function(file) {
         dt <- selected_result()$table %>%
@@ -675,7 +672,7 @@ mod_infiltration_analysis_server <- function(id) {
     # --- Download Handler for Combined All Results Table ---
     output$download_all_results_table <- downloadHandler(
       filename = function() {
-        paste0("all_results_table_", Sys.Date(), ".csv")
+        paste0("infiltration_table_", Sys.Date(), "_ALL.csv")
       },
       content = function(file) {
         dt <- all_results_table() %>%
@@ -683,14 +680,14 @@ mod_infiltration_analysis_server <- function(id) {
           rename(
             piezometer = Piezometer,
             infiltration_rate = Infiltration_rate,
-            duration          = Duration_hrs,
-            average_depth     = Average_depth
+            duration = Duration_hrs,
+            average_depth = Average_depth
           ) %>%
           # Add unit columns for each variable.
           mutate(
             infiltration_rate_unit = paste0(input$depth_unit_infiltration, "/hr"),
-            duration_unit          = "hr",
-            average_depth_unit     = input$depth_unit_infiltration
+            duration_unit = "hr",
+            average_depth_unit = input$depth_unit_infiltration
           ) %>%
           # Reorder columns so that the new unit columns follow their respective measures.
           select(
@@ -700,13 +697,8 @@ mod_infiltration_analysis_server <- function(id) {
             average_depth, average_depth_unit,
             everything()
           )
-
         readr::write_csv(dt, file)
       }
     )
-
-
-
-
   })
 }
