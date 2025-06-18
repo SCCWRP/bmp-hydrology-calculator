@@ -1,4 +1,4 @@
-The total rainfall is the cumulative precipitation depth measured for each event. The average rainfall intensity is the ratio of the total rainfall to the total rainfall duration. The peak 5-min or 10-min rainfall intensity is given by the maximum depth of rainfall over any 5-min or 10-min interval, respectively. Precipitation statistics are calculated as: <br>
+test The total rainfall is the cumulative precipitation depth measured for each event. The average rainfall intensity is the ratio of the total rainfall to the total rainfall duration. The peak 5-min or 10-min rainfall intensity is given by the maximum depth of rainfall over any 5-min or 10-min interval, respectively. Precipitation statistics are calculated as: <br>
 
 
 $$ P= \sum_{j=1}^{t_P / \Delta t}   P_j  $$
