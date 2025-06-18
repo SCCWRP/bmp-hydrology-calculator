@@ -491,7 +491,12 @@ mod_infiltration_analysis_server <- function(id) {
             fg = bslib::bs_get_variables(bslib::bs_theme(preset = "cosmo"), "secondary")
           )
         )
-        ggsave(file, plot = selected_result()$plot, device = "png", height = 6.94, width = 9.2302)
+
+        ggplot2::ggsave(file, plot = selected_result()$plot + theme_bw(base_size = 20),   width = 1920,
+                        height = 1017,
+                        units = "px",
+                        dpi = 93)
+
       }
     )
     output$download_plot_infiltration <- downloadHandler(
@@ -505,7 +510,10 @@ mod_infiltration_analysis_server <- function(id) {
             fg = bslib::bs_get_variables(bslib::bs_theme(preset = "cosmo"), "secondary")
           )
         )
-        ggsave(file, plot = selected_result()$plot, device = "png", height = 6.94, width = 9.2302)
+        ggplot2::ggsave(file, plot = selected_result()$plot + theme_bw(base_size = 20),   width = 1920,
+                        height = 1017,
+                        units = "px",
+                        dpi = 93)
       }
     )
     output$download_all_plots_infiltration <- downloadHandler(
@@ -532,7 +540,12 @@ mod_infiltration_analysis_server <- function(id) {
                 fg = bslib::bs_get_variables(bslib::bs_theme(preset = "cosmo"), "secondary")
               )
             )
-            ggsave(png_file, plot = res$plot, device = "png", height = 6.94, width = 9.2302)
+
+            ggplot2::ggsave(png_file, plot = res$plot + theme_bw(base_size = 20),   width = 1920,
+                            height = 1017,
+                            units = "px",
+                            dpi = 93)
+
           } else {
             # Optionally, create a placeholder image for sheets with errors.
             png(png_file, width = 9.2302 * 100, height = 6.94 * 100)

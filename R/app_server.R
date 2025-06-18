@@ -9,11 +9,11 @@ app_server <- function(input, output, session) {
   ggplot2::theme_set(ggplot2::theme_bw(base_size = 18))
   thematic::thematic_shiny(font = "auto")
 
-  # Show maintenance modal on startup
+  #Show maintenance modal on startup
   # showModal(
   #   modalDialog(
   #     title = "Maintenance Notice",
-  #     "This application is undergoing maintenance until 04/01/2025.",
+  #     "We're currently performing scheduled maintenance on our application to bring you an even better experience. We expect to be back online by June 23, 2025.",
   #     easyClose = TRUE,
   #     footer = modalButton("Close")
   #   )

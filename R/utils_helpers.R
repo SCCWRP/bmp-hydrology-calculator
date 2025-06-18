@@ -1,3 +1,9 @@
+# Helper function: read all sheets of an excel file
+read_excel_allsheets <- function(filename) {
+  sheets <- readxl::excel_sheets(filename)
+  setNames(lapply(sheets, function(sheet) readxl::read_excel(filename, sheet = sheet)), sheets)
+}
+
 # Helper function: Validate the rainfall file and return a list of error messages
 validate_rainfall_file <- function(file_path) {
   errors <- list()
@@ -30,7 +36,6 @@ validate_rainfall_file <- function(file_path) {
 
 
 # Helper function: Validate the flow file and return a list of error messages.
-# Helper function: Validate the flow file and return a list of error messages.
 validate_flow_file <- function(file_path) {
   errors <- list()
 
@@ -49,6 +54,9 @@ validate_flow_file <- function(file_path) {
     )
   }
 
+  # Flag to check if at least one sheet has data
+  has_data <- FALSE
+
   # Validate each expected data sheet.
   for (sheet in expected_data_sheets) {
     if (sheet %in% sheets) {
@@ -58,34 +66,34 @@ validate_flow_file <- function(file_path) {
       if (ncol(df) != 2 || !all(c("datetime", "flow") %in% names(df))) {
         errors <- c(errors, paste0("Sheet '", sheet, "' must contain exactly two columns: 'datetime' and 'flow'."))
       } else {
-        # For inflow2 and bypass, allow an empty dataset but still require the correct column names.
         # If the sheet is non-empty, then check the column datatypes.
-        if (!(sheet %in% c("inflow2", "bypass") && nrow(df) == 0)) {
-          # Check that "datetime" is of a datetime type.
+        if (nrow(df) > 0) {
+          has_data <- TRUE  # Mark that at least one sheet has data
+
+          # Check that datetime column is of correct type
           if (!inherits(df$datetime, "POSIXct") && !inherits(df$datetime, "Date")) {
-            errors <- c(errors, paste0("In sheet '", sheet, "', the 'datetime' column must be of datetime type."))
+            errors <- c(errors, sprintf("In sheet '%s', the 'datetime' column must be of datetime type. Make sure you have correct datatype/data not NA.", sheet))
           }
-          # Check that "flow" is numeric.
+
+          # Check that flow column is numeric
           if (!is.numeric(df$flow)) {
-            errors <- c(errors, paste0("In sheet '", sheet, "', the 'flow' column must be numeric."))
+            errors <- c(errors, sprintf("In sheet '%s', the 'flow' column must be numeric. Make sure you have correct datatype/data not NA.", sheet))
           }
         }
       }
     }
   }
 
+  # Add error if none of the sheets have data
+  if (!has_data) {
+    errors <- c(errors, "At least one of the sheets must contain data (i.e., not be empty).")
+  }
+
   return(errors)
 }
 
 
-
-
-read_excel_allsheets <- function(filename) {
-  sheets <- readxl::excel_sheets(filename)
-  setNames(lapply(sheets, function(sheet) readxl::read_excel(filename, sheet = sheet)), sheets)
-}
-
-
+# Helper function: Validate the infiltration file and return a list of error messages.
 validate_infiltration_file <- function(file_path) {
   sheets <- readxl::excel_sheets(file_path)
   sheets <- sheets[!sheets %in% "Instructions"]
@@ -154,7 +162,3 @@ handleFatalError <- function(errorMessage) {
   ))
 
 }
-
-
-
-

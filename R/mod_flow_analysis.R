@@ -127,6 +127,8 @@ mod_flow_analysis_server <- function(id) {
 
     # Create a flow plot based on filtered data.
     create_flow_plot <- function(df) {
+      df$flow_type <- factor(df$flow_type, levels = c("inflow1", "inflow2", "bypass", "outflow"))
+
       ggplot2::ggplot(df, ggplot2::aes(x = datetime, y = flow, colour = flow_type)) +
         ggplot2::geom_line(size = 1.5) +
         ggplot2::labs(
@@ -194,42 +196,86 @@ mod_flow_analysis_server <- function(id) {
           ))
           shinyjs::enable("submit_flow")
 
-          # Read inflow and outflow sheets with error handling.
-          inflow_data <- tryCatch({
-            readxl::read_excel(input$flow_file$datapath, sheet = "inflow1")
-          }, error = function(e) {
-            handleFatalError(paste("Error reading inflow1 sheet:", e$message))
-          })
+          # ---------------------------------------------------------------------------
+          # 0. Read each sheet separately (hard-coded) ---------------------------------
+          # ---------------------------------------------------------------------------
+          inflow1  <- tryCatch(readxl::read_excel(input$flow_file$datapath, sheet = "inflow1"),
+                               error = function(e) tibble::tibble(datetime = NA)[0, ])
 
-          outflow_data <- tryCatch({
-            readxl::read_excel(input$flow_file$datapath, sheet = "outflow")
-          }, error = function(e) {
-            handleFatalError(paste("Error reading outflow sheet:", e$message))
-          })
+          inflow2  <- tryCatch(readxl::read_excel(input$flow_file$datapath, sheet = "inflow2"),
+                               error = function(e) tibble::tibble(datetime = NA)[0, ])
 
-          tryCatch({
-            # Update date inputs from inflow data.
-            min_inflow_date <- min(as.Date(inflow_data$datetime))
-            max_inflow_date <- max(as.Date(inflow_data$datetime))
-            shinyWidgets::updateAirDateInput(session, "start_date_flow",
-                                             value = min_inflow_date,
-                                             options = list(minDate = min_inflow_date, maxDate = max_inflow_date))
-            # Update date inputs from outflow data.
-            min_outflow_date <- min(as.Date(outflow_data$datetime))
-            max_outflow_date <- max(as.Date(outflow_data$datetime))
-            shinyWidgets::updateAirDateInput(session, "end_date_flow",
-                                             value = max_outflow_date,
-                                             options = list(minDate = min_outflow_date, maxDate = max_outflow_date))
+          bypass   <- tryCatch(readxl::read_excel(input$flow_file$datapath, sheet = "bypass"),
+                               error = function(e) tibble::tibble(datetime = NA)[0, ])
 
-            # Update time inputs.
-            start_time <- format(min(as.POSIXct(inflow_data$datetime)), "%H:%M:%S")
-            shinyWidgets::updateTimeInput(session, "start_hour_flow", value = hms::as_hms(start_time))
+          outflow  <- tryCatch(readxl::read_excel(input$flow_file$datapath, sheet = "outflow"),
+                               error = function(e) tibble::tibble(datetime = NA)[0, ])
 
-            end_time <- format(max(as.POSIXct(outflow_data$datetime)), "%H:%M:%S")
-            shinyWidgets::updateTimeInput(session, "end_hour_flow", value = hms::as_hms(end_time))
-          }, error = function(e) {
-            handleFatalError(paste("Error updating date/time inputs:", e$message))
-          })
+          # ---------------------------------------------------------------------------
+          # 1. Collect timestamps from any sheet that actually contains data ----------
+          # ---------------------------------------------------------------------------
+          extract_times <- function(df) {
+            if (nrow(df) > 0 && "datetime" %in% names(df)) {
+              as.POSIXct(df$datetime, tz = "UTC") |>           # set your TZ if known
+                na.omit()
+            } else {
+              NULL
+            }
+          }
+
+          all_times <- c(
+            extract_times(inflow1),
+            extract_times(inflow2),
+            extract_times(bypass),
+            extract_times(outflow)
+          )
+
+          if (length(all_times) == 0) {
+            handleFatalError("No valid timestamps found in any of the four sheets."); return()
+          }
+
+          # ---------------------------------------------------------------------------
+          # 2. Compute global minima / maxima -----------------------------------------
+          # ---------------------------------------------------------------------------
+          min_ts <- min(all_times)
+          max_ts <- max(all_times)
+
+          min_ts <- as.POSIXct(min_ts, origin = "1970-01-01", tz = "UTC")
+          max_ts <- as.POSIXct(max_ts, origin = "1970-01-01", tz = "UTC")
+
+          print(min_ts)
+          print(max_ts)
+          min_date <- as.Date(min_ts)
+          max_date <- as.Date(max_ts)
+          print(min_date)
+          print(max_date)
+
+
+          start_hr <- format(min_ts, "%H:%M:%S")
+          end_hr <- format(max_ts, "%H:%M:%S")
+          print(start_hr)
+          print(end_hr)
+
+          # ---------------------------------------------------------------------------
+          # 3. Update widgets ----------------------------------------------------------
+          # ---------------------------------------------------------------------------
+          shinyWidgets::updateAirDateInput(
+            session, "start_date_flow",
+            value = min_date,
+            options = list(minDate = min_date, maxDate = max_date)
+          )
+
+          shinyWidgets::updateAirDateInput(
+            session, "end_date_flow",
+            value = max_date,
+            options = list(minDate = min_date, maxDate = max_date)
+          )
+
+          shinyWidgets::updateTimeInput(session, "start_hour_flow",
+                                        value = hms::as_hms(start_hr))
+          shinyWidgets::updateTimeInput(session, "end_hour_flow",
+                                        value = hms::as_hms(end_hr))
+
         }
       }, error = function(e) {
         handleFatalError(paste("Error during file validation:", e$message))
@@ -388,22 +434,22 @@ mod_flow_analysis_server <- function(id) {
               tidyr::unnest(cols = everything()) %>%
               dplyr::mutate(
                 flow_type = sheet_name,
-                runoff_duration = round(runoff_duration, 1),
-                peak_flow_rate = round(peak_flow_rate, 1),
-                runoff_volume = round(runoff_volume, 1)
+                runoff_duration = round(runoff_duration, 2),
+                peak_flow_rate = round(peak_flow_rate, 2),
+                runoff_volume = round(runoff_volume, 2)
               ) %>%
               dplyr::select(flow_type, start_time, peak_flow_rate, runoff_duration, runoff_volume, end_time) %>%
               dplyr::mutate(
                 start_time = stringr::str_replace(start_time, "T", " "),
-                end_time   = stringr::str_replace(end_time, "T", " ")
+                end_time = stringr::str_replace(end_time, "T", " ")
               )
-
             return(df)
           } else {
             return(NULL)
           }
         })
         my_content <- dplyr::bind_rows(my_content)
+        print(my_content)
         my_content <- my_content %>%
           dplyr::mutate(flow_type = factor(flow_type, levels = c("inflow1", "inflow2", "bypass", "outflow"))) %>%
           dplyr::arrange(flow_type)
@@ -507,7 +553,16 @@ mod_flow_analysis_server <- function(id) {
             df <- df %>% dplyr::filter(flow_type %in% input$choose_graph_flow)
           }
           p <- create_flow_plot(df)
-          ggplot2::ggsave(file, plot = p, device = "png", width = 8, height = 6)
+          ggplot2::ggsave(
+            file,
+            plot = p +
+              scale_x_datetime(date_breaks = "1 day", date_labels = "%Y-%m-%d %H:%M") +
+              theme_bw(base_size = 20),
+            width = 1920,
+            height = 1017,
+            units = "px",
+            dpi = 93
+          )
         }, error = function(e) {
           handleFatalError(paste("Error downloading plot:", e$message))
         })

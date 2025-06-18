@@ -450,7 +450,10 @@ mod_rainfall_analysis_server <- function(id) {
             }
           }
           p <- create_rainfall_plot(df)
-          ggplot2::ggsave(file, plot = p, device = "png", width = 8, height = 6)
+          ggplot2::ggsave(file, plot = p + theme_bw(base_size = 20),   width = 1920,
+                          height = 1017,
+                          units = "px",
+                          dpi = 93)
         }, error = function(e) {
           handleFatalError(paste("Error downloading rainfall plot:", e$message))
         })
