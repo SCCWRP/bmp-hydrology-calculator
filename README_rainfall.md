@@ -15,7 +15,7 @@ $$i_{ave}=\frac{P}{t_P}=\frac{P}{t_n - t_1} $$
 <div align="right"> 
 Equation 2
 </div>
-where i<sub>ave</sub> represents the average rainfall intensity over the rainfall duration (length/time); t<sub>P</sub> (time) is the rainfall duration, determined as the elapsed time between the first tip (t<sub>1</sub>) and the last tip (t<sub>n</sub>) of the rain event. 
+where $i_{ave}$ represents the average rainfall intensity over the rainfall duration (length/time); $t_P$ (time) is the rainfall duration, determined as the elapsed time between the first tip ($t_1$) and the last tip ($t_n$) of the rain event. 
 
 $$peak \ i_{∆t}=\max \left( \frac{\sum\limits_{t_j}^{(t_j + ∆t)} P_i}{∆t} \right)$$
 <div align="right"> 
