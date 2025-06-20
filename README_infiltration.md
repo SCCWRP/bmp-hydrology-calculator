@@ -32,7 +32,7 @@ where $y(t)$ is the depth at time t, $y_0$ is the initial depth, and $k$ is the 
 
 The best fit is selected as the maximum $R^2$ achieved by fitting the exponential decay model to the smoothed depth data. This way, the best fit regression is guaranteed to be centered on a time window of the depth data that maximizes the regression limb. 
 
-Note: A high goodness-of-fit threshold is enforced ($R^2$ > 0.999) to ensure that only the regression limb is considered. If the whole timeseries has been scanned with the 12 h moving window and a suitable model cannot be found, the window size is reduced by 1 h until a suitable fit is found. The minimum window size for a regression limb is 1 h.
+**Note**: A high goodness-of-fit threshold is enforced ($R^2$ > 0.999) to ensure that only the regression limb is considered. If the whole timeseries has been scanned with the 12 h moving window and a suitable model cannot be found, the window size is reduced by 1 h until a suitable fit is found. The minimum window size for a regression limb is 1 h.
 
 
 <p align="center">
@@ -41,7 +41,7 @@ Note: A high goodness-of-fit threshold is enforced ($R^2$ > 0.999) to ensure tha
 </p>
 
 3\. Infiltration rate calculation: 
-Once the best-fitting time window is identified, the infiltration rate (length/time) is calculated using Equation 3, based on the rate constant $k$ and the average depth within the selected window (from step 2).
+Once the best-fitting time window is identified, the **infiltration rate** (length/time) is calculated using Equation 3, based on the rate constant $k$ and the average depth within the selected window (from step 2).
 
 $$Infiltration \ Rate = k \cdot y_{ave}$$  			
 
@@ -49,7 +49,7 @@ $$Infiltration \ Rate = k \cdot y_{ave}$$
 Equation 3
 </div>
 
-The average depth is computed as:
+The **average depth** is computed as:
 
 $$
 y_{ave} = \frac{1}{n} \sum_{i=1}^{n} y_i
