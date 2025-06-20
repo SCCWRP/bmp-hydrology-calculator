@@ -36,9 +36,10 @@ The best fit is selected as the maximum $R^2$ achieved by fitting the exponentia
 
 
 <p align="center">
-  <img src="https://github.com/user-attachments/assets/86a6f365-ed3a-4f40-a553-d76a8a77e64b" width="900">
-
+  <img src="https://github.com/user-attachments/assets/86a6f365-ed3a-4f40-a553-d76a8a77e64b"
+       style="max-width: 900px; max-height: 600px; height: auto; width: auto;">
 </p>
+
 
 3\. Infiltration rate calculation: 
 Once the best-fitting time window is identified, the **infiltration rate** (length/time) is calculated using Equation 3, based on the rate constant $k$ and the average depth within the selected window (from step 2).
