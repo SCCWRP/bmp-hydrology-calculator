@@ -36,8 +36,11 @@ Note: A high goodness-of-fit threshold is enforced ($R^2$ > 0.999) to ensure tha
 
 
 
-![infiltration-pic](https://github.com/user-attachments/assets/1b412744-6cba-4b65-a129-bb2912351934)
 
+<p align="center">
+  <img src="https://private-user-images.githubusercontent.com/55409702/457156196-1b412744-6cba-4b65-a129-bb2912351934.png?jwt=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3NTA0Mzk3OTMsIm5iZiI6MTc1MDQzOTQ5MywicGF0aCI6Ii81NTQwOTcwMi80NTcxNTYxOTYtMWI0MTI3NDQtNmNiYS00YjY1LWExMjktYmIyOTEyMzUxOTM0LnBuZz9YLUFtei1BbGdvcml0aG09QVdTNC1ITUFDLVNIQTI1NiZYLUFtei1DcmVkZW50aWFsPUFLSUFWQ09EWUxTQTUzUFFLNFpBJTJGMjAyNTA2MjAlMkZ1cy1lYXN0LTElMkZzMyUyRmF3czRfcmVxdWVzdCZYLUFtei1EYXRlPTIwMjUwNjIwVDE3MTEzM1omWC1BbXotRXhwaXJlcz0zMDAmWC1BbXotU2lnbmF0dXJlPTFiODQ5MzgxNDhlODk1MWM3NzAzNTkzYmMwNjc4ODBlYTQxNDlhNTFkNmQyZWVjMDkxNjNlYmQyNWVhYzhhNDEmWC1BbXotU2lnbmVkSGVhZGVycz1ob3N0In0.mpB4VqctQmB2fWUF6y7RtV0OnN1vJLek_aEbGJvZJts" width="600">
+
+</p>
 
 3\. Infiltration rate calculation: 
 Once the best-fitting time window is identified, the infiltration rate (length/time) is calculated using Equation 3, based on the rate constant $k$ and the average depth within the selected window (from step 2).
