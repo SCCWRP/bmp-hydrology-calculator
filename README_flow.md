@@ -50,7 +50,7 @@ Equation 4
 If there is more than one inflow to the BMP, including bypass (Figure 3):
 
 <p align="center">
-  <img src="https://user-images.githubusercontent.com/55409702/229169339-5514e028-4ab6-46d8-b36e-2c6da329d17f.png" />
+  <img src="https://user-images.githubusercontent.com/55409702/229169339-5514e028-4ab6-46d8-b36e-2c6da329d17f.png" width = "900" />
 </p>
 
 $$\text{Figure 3. BMP hydrology with multiple inlets and bypass}$$
