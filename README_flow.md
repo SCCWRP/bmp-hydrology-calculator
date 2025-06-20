@@ -1,8 +1,8 @@
 Urban BMP monitoring studies typically generate runoff hydrographs where flow is measured at 1-15 min intervals.
 
-The runoff duration (time) is the elapsed time between the start and end of the runoff hydrograph. The start and end of the hydrograph can be user-specified from the uploaded timestamps.
+The **runoff duration** (time) is the elapsed time between the start and end of the runoff hydrograph. The start and end of the hydrograph can be user-specified from the uploaded timestamps.
 
-Runoff volume is determined by integrating the hydrograph using a numerical approximation to calculate the area under the curve. In this application, the area between two consecutive measurements (i.e., the runoff volume for that interval) is computed using a trapezoid; The cumulative runoff volume is then determined by summing the areas of all trapezoids across the hydrograph.
+**Runoff volume** is determined by integrating the hydrograph using a numerical approximation to calculate the area under the curve. In this application, the area between two consecutive measurements (i.e., the runoff volume for that interval) is computed using a trapezoid; The cumulative runoff volume is then determined by summing the areas of all trapezoids across the hydrograph.
 
 $$ V=\int_0^t Q dt \approx \sum_{n=1}^i \frac{(Q_i+Q_{i-1})}{2}(t_i-t_{i-1}) $$
 
@@ -12,7 +12,7 @@ Equation 1
 
 where $V$ is the runoff volume ($length^3$); $Q_i$ is the flow rate ($length^3$/time) recorded at time $t_i$; $t_i$ represents the timestamps, with $i$ (ranging from $1$ to $n$) denoting the index of each recorded values within the dataset or the user defined period of interest.
 
-Peak flow is determined as the maximum flow rate observed over a 5-min period. If data are reported at intervals shorter than 5 min, a 5 min moving average is applied to smooth the flow data; if the data are reported at intervals longer than 5 min, interpolation is used to estimate flow rates at 5 min intervals for consistent peak flow determination.
+**Peak flow** is determined as the maximum flow rate observed over a 5-min period. If data are reported at intervals shorter than 5 min, a 5 min moving average is applied to smooth the flow data; if the data are reported at intervals longer than 5 min, interpolation is used to estimate flow rates at 5 min intervals for consistent peak flow determination.
 
 $$ Q_p=max(Q_i )$$
 <div align="right"> 
@@ -50,7 +50,7 @@ Equation 4
 If there is more than one inflow to the BMP, including bypass (Figure 3):
 
 <p align="center">
-  <img src="https://user-images.githubusercontent.com/55409702/229169339-5514e028-4ab6-46d8-b36e-2c6da329d17f.png" />
+  <img src="https://user-images.githubusercontent.com/55409702/229169339-5514e028-4ab6-46d8-b36e-2c6da329d17f.png" width = "900" />
 </p>
 
 $$\text{Figure 3. BMP hydrology with multiple inlets and bypass}$$
