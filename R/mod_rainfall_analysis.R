@@ -410,7 +410,6 @@ mod_rainfall_analysis_server <- function(id) {
             cumulative_rain = cumsum(rain),
             elapsed_hours = as.numeric(difftime(datetime, elapsed_ref, units = "hours"))
           )
-        print(head(df))
         create_rainfall_plot(df, selected_event)
 
       }, error = function(e) {

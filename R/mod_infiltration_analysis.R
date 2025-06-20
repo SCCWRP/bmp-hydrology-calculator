@@ -48,43 +48,43 @@ mod_infiltration_analysis_ui <- function(id) {
       "Submit data when validation is successful."
     ),
     shinyjs::disabled(shinyWidgets::actionBttn(ns("submit_infiltration"), "Submit")),
-    bslib::card_body(
-      bslib::tooltip(
-        span(strong("Constants for smoothing and regression", bsicons::bs_icon("question-circle"))),
-        "These numbers are for informative only. They are not adjustable by the user for now.
-        Hover on the constants for more information."
-      ),
-      shinyjs::disabled(
-        bslib::tooltip(
-          numericInput(
-            inputId = ns("smoothing_window"),
-            label = "Smoothing window",
-            value = 5
-          ),
-          "5 minute window for median filter"
-        )
-      ),
-      shinyjs::disabled(
-        bslib::tooltip(
-          numericInput(
-            inputId = ns("regression_window"),
-            label = "Regression window",
-            value = 720
-          ),
-          "12 hour window for fitted regression"
-        )
-      ),
-      shinyjs::disabled(
-        bslib::tooltip(
-          numericInput(
-            inputId = ns("regression_threshold"),
-            label = "Regression threshold",
-            value = 0.999
-          ),
-          "Regression tolerance can be very high due to smoothness of fit"
-        )
-      )
-    )
+    # bslib::card_body(
+    #   bslib::tooltip(
+    #     span(strong("Constants for smoothing and regression", bsicons::bs_icon("question-circle"))),
+    #     "These numbers are for informative only. They are not adjustable by the user for now.
+    #     Hover on the constants for more information."
+    #   ),
+    #   shinyjs::disabled(
+    #     bslib::tooltip(
+    #       numericInput(
+    #         inputId = ns("smoothing_window"),
+    #         label = "Smoothing window (min)",
+    #         value = 5
+    #       ),
+    #       "5 minute window for median filter"
+    #     )
+    #   ),
+    #   shinyjs::disabled(
+    #     bslib::tooltip(
+    #       numericInput(
+    #         inputId = ns("regression_window"),
+    #         label = "Regression window",
+    #         value = 720
+    #       ),
+    #       "12 hour window for fitted regression"
+    #     )
+    #   ),
+    #   shinyjs::disabled(
+    #     bslib::tooltip(
+    #       numericInput(
+    #         inputId = ns("regression_threshold"),
+    #         label = "Regression threshold",
+    #         value = 0.999
+    #       ),
+    #       "Regression tolerance can be very high due to smoothness of fit"
+    #     )
+    #   )
+    # )
   )
 
   main_panel <- bslib::navset_card_underline(
@@ -218,8 +218,8 @@ mod_infiltration_analysis_server <- function(id) {
               bslib::card_footer(
                 bslib::layout_columns(
                   col_widths = c(6, 6),
-                  shinyWidgets::downloadBttn(ns("download_table_infiltration"), "Download this table"),
-                  shinyWidgets::downloadBttn(ns("download_all_results_table"), "Download table for all results")
+                  shinyWidgets::downloadBttn(ns("download_table_infiltration"), "Download table (SMC format)"),
+                  shinyWidgets::downloadBttn(ns("download_all_results_table"), "Download table for all results (SMC format)")
                 )
               )
             )
@@ -230,7 +230,7 @@ mod_infiltration_analysis_server <- function(id) {
       # Pop up a "Calculating" modal.
       showModal(modalDialog(
         title = "Calculating",
-        "Please wait while we process the data.This might take a few minutes depending on your data size...",
+        "Please wait while we process the data. This might take a few minutes depending on your data size...",
         footer = NULL,
         easyClose = FALSE
       ))
@@ -239,7 +239,6 @@ mod_infiltration_analysis_server <- function(id) {
       results_list <- list()
 
       # Loop through each validated sheet.
-      # Loop through each validated sheet.
       for (sheet in names(valid_data)) {
         tryCatch({
           data_df <- valid_data[[sheet]]
@@ -247,9 +246,9 @@ mod_infiltration_analysis_server <- function(id) {
           df$datetime <- as.character(as.POSIXct(df$datetime, tz = "UTC"))
 
           # Use constants from the UI.
-          SMOOTHING_WINDOW <- input$smoothing_window
-          REGRESSION_WINDOW <- input$regression_window
-          REGRESSION_THRESHOLD <- input$regression_threshold
+          SMOOTHING_WINDOW <- 5
+          REGRESSION_WINDOW <- 720
+          REGRESSION_THRESHOLD <- 0.999
 
           payload <- list(
             data = df,
@@ -331,7 +330,7 @@ mod_infiltration_analysis_server <- function(id) {
                   Piezometer        = piez,
                   Infiltration_rate = round(calc_results[[piez]]$infiltration_rate, 2),
                   Duration_hrs      = round(calc_results[[piez]]$delta_x, 2),
-                  Average_depth     = round(calc_results[[piez]]$y_average, 2),
+                  #Average_depth     = round(calc_results[[piez]]$y_average, 2),
                   stringsAsFactors  = FALSE
                 )
               }
@@ -457,8 +456,8 @@ mod_infiltration_analysis_server <- function(id) {
         col_mapping <- c(
           "Piezometer"        = "Piezometer",
           "Infiltration_rate" = paste("Infiltration Rate (", input$depth_unit_infiltration, "/hr)", sep=""),
-          "Duration_hrs"      = "Duration (hrs)",
-          "Average_depth"     = paste("Average Depth (", input$depth_unit_infiltration, ")", sep="")
+          "Duration_hrs"      = "Duration (hr)"
+          #"Average_depth"     = paste("Average Depth (", input$depth_unit_infiltration, ")", sep="")
         )
 
         names(dt) <- sapply(names(dt), function(x) {
@@ -600,8 +599,8 @@ mod_infiltration_analysis_server <- function(id) {
         col_mapping <- c(
           "Piezometer"        = "Piezometer",
           "Infiltration_rate" = paste("Infiltration Rate (", input$depth_unit_infiltration, "/hr)", sep=""),
-          "Duration_hrs"      = "Duration (hrs)",
-          "Average_depth"     = paste("Average Depth (", input$depth_unit_infiltration, ")", sep="")
+          "Duration_hrs"      = "Duration (hr)"
+          #"Average_depth"     = paste("Average Depth (", input$depth_unit_infiltration, ")", sep="")
         )
         names(dt) <- sapply(names(dt), function(x) {
           if (x %in% names(col_mapping)) col_mapping[[x]] else x
@@ -622,8 +621,8 @@ mod_infiltration_analysis_server <- function(id) {
         "storm_name"        = "Storm Name",
         "Piezometer"        = "Piezometer",
         "Infiltration_rate" = paste("Infiltration Rate (", input$depth_unit_infiltration, "/hr)", sep=""),
-        "Duration_hrs"      = "Duration (hrs)",
-        "Average_depth"     = paste("Average Depth (", input$depth_unit_infiltration, ")", sep="")
+        "Duration_hrs"      = "Duration (hr)"
+        #"Average_depth"     = paste("Average Depth (", input$depth_unit_infiltration, ")", sep="")
       )
       names(dt) <- sapply(names(dt), function(x) {
         if (x %in% names(col_mapping)) col_mapping[[x]] else x

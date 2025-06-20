@@ -10,7 +10,7 @@
 
 
 about_text <- "
-This web application has been developed to enable consistent, transparent, and easily applied calculations of rainfall, flow, and infiltration for stormwater best management practice (BMP) monitoring studies. It provides three types of analyses:
+This web application has been developed by the Southern California Coastal Water Research Project to enable consistent, transparent, and easily applied calculations of rainfall, flow, and infiltration for stormwater best management practice (BMP) monitoring studies. It provides three types of analyses:
 1. **Rainfall Analysis**
    Generates the cumulative rainfall depth, average rainfall intensity, and the maximum rainfall intensity over the entire storm and specified durations (e.g., 5, 10 or 60 minutes), and antecedent dry period based on a user-uploaded hyetograph.
 2. **Flow Analysis**
@@ -53,6 +53,13 @@ mod_about_ui <- function(id) {
       "apidoc",
       "API Documentation",
       onclick ="window.open('https://nexus.sccwrp.org/bmp_hydrology/api/docs', '_blank')"
+    ),
+    tags$div(
+      style = "position: absolute; bottom: 10px; width: 100%; text-align: center;",
+      tags$img(
+        src = "https://ftp.sccwrp.org/pub/download/PROJECTS/SMC_BMP/sccwrp_logo.jpg",
+        height = "60px"
+      )
     )
   )
 }

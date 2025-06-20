@@ -9,7 +9,7 @@
 # Flow-specific markdown text
 flow_markdown_text <- "
 
-Hydrograph data can be submitted for a single rain event at one time. Up to four flows in the same event can be accommodated for analysis. The available flow types are inflow 1, inflow 2, outflow, and bypass. A user does not need to submit all four types; refer to the Methods tab for an illustration of common BMP flow type configurations. If any of the data types are not applicable, leave the tab blank (as is).
+Hydrograph data can be submitted for a single rain event at one time. Up to four flows in the same event can be accommodated for analysis. The available flow types are inflow 1, inflow 2, outflow, and bypass. A user does not need to submit all four types; refer to the Methods tab for an illustration of common BMP flow type configurations. If any of the data types are not applicable, leave the template tab blank (as is).
 
 - Download flow demo data
 - Download flow template
