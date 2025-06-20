@@ -19,10 +19,9 @@ $$ Q_p=max(Q_i )$$
 Equation 2
 </div>
 
-where 𝑄𝑝represents the peak flow rate during the rain event (length3/time), 𝑄j (length3/time) represents the flow rate calculated over5 min intervals (𝑡𝑗+1−𝑡𝑗=5 𝑚𝑖𝑛).
+where $𝑄_{𝑝}$ represents the peak flow rate during the rain event ($length^3$/time), $𝑄_j$ ($length^3$/time) represents the flow rate calculated over 5 min intervals ($𝑡_{𝑗+1}$ − $𝑡_𝑗$=5 min).
 
 Hydrologic mitigation or alteration provided by BMPs is often reported as the percent change in a characteristic (flow rate or volume) between the inflow and the outflow. This is illustrated in figures below for the simplest data collection scenario:
-
 
 <p align="center">
   <img src="https://user-images.githubusercontent.com/55409702/228071181-d4008432-2b9e-42f7-a9a6-4744d9239f1b.png" />
