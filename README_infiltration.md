@@ -60,3 +60,6 @@ Equation 4
 </div>
 
 where $y_{ave}$ is the average depth within the selected time window, $y_i$ represents individual smoothed depth values within the window, and $n$ is the number of data points in the window.
+
+SCCWRP is grateful to Matthew McGauley from Villanova University for providing
+foundational logic for the infiltration calculator.
