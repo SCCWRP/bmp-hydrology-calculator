@@ -52,7 +52,7 @@ Equation 3
 The average depth is computed as:
 
 $$
-\bar{y} = \frac{1}{n} \sum_{i=1}^{n} y_i
+y_{ave} = \frac{1}{n} \sum_{i=1}^{n} y_i
 $$	
 
 <div align="right"> 
