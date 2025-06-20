@@ -62,5 +62,3 @@ mod_flow_instruction_server <- function(id) {
     }
   )
 }
-
-

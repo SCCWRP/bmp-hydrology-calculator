@@ -91,15 +91,57 @@ mod_rainfall_analysis_server <- function(id) {
     ns <- session$ns
 
     # Helper to create the rainfall plot.
-    create_rainfall_plot <- function(df) {
-      ggplot2::ggplot(df, ggplot2::aes(x = hours, y = cumsum)) +
+    create_rainfall_plot <- function(df, selected_event) {
+      # Safely extract unique first and last rain values
+      first_rain_value <- na.omit(unique(df$first_rain))
+      last_rain_value  <- na.omit(unique(df$last_rain))
+
+      # Format strings
+      first_rain_str <- if (length(first_rain_value) > 0) format(first_rain_value[1], "%Y-%m-%d %H:%M:%S") else "None"
+      last_rain_str  <- if (length(last_rain_value) > 0) format(last_rain_value[1], "%Y-%m-%d %H:%M:%S") else "None"
+
+      # Compute duration
+      duration_hours <- if (length(first_rain_value) > 0 && length(last_rain_value) > 0) {
+        round(as.numeric(difftime(last_rain_value[1], first_rain_value[1], units = "hours")), 2)
+      } else {
+        NA
+      }
+      duration_str <- if (!is.na(duration_hours)) paste0(duration_hours, " hours") else "N/A"
+
+      # Prepare caption only if it's not All events
+      caption_text <- if (!is.null(selected_event) && selected_event != "All events") {
+        paste0(
+          "First rain timestamp: ", first_rain_str, "\n",
+          "Last rain timestamp: ", last_rain_str, "\n",
+          "Total rainfall duration: ", duration_str
+        )
+      } else {
+        NULL  # No caption
+      }
+
+      # Generate plot
+      ggplot2::ggplot(df, ggplot2::aes(x = elapsed_hours, y = cumulative_rain)) +
         ggplot2::geom_line(color = "steelblue", size = 1.5) +
         ggplot2::labs(
           x = "Elapsed hours from the first rain tip",
           y = paste("Cumulative rainfall (", rain_unit(), ")", sep = ""),
-          title = input$title
+          title = if (!is.null(selected_event) && selected_event != "All events") {
+            paste("Event", selected_event)
+          } else {
+            "All Events"
+          },
+          caption = caption_text
+        ) +
+        ggplot2::theme_bw(base_size = 25) +
+        ggplot2::theme(
+          axis.text.x = ggplot2::element_text(size = 20),
+          axis.text.y = ggplot2::element_text(size = 20)
         )
     }
+
+
+
+
 
     # ----------------------------------------------------------------------------
     # 1. Enable Validate Button When a File is Uploaded (disable Submit until validated)
@@ -189,7 +231,6 @@ mod_rainfall_analysis_server <- function(id) {
                   DT::dataTableOutput(ns("rainfall_table"))
                 ),
                 bslib::card_footer(
-                  fillable = TRUE,
                   bslib::layout_columns(
                     col_widths = c(6, 6),
                     shinyWidgets::downloadBttn(ns("download_table_rainfall"), "Download table"),
@@ -316,7 +357,7 @@ mod_rainfall_analysis_server <- function(id) {
       req(statistics())
       tryCatch({
         event_ids <- as.character(statistics()$event)
-        event_ids <- c("All events", event_ids)
+        event_ids <- c(event_ids, "All events")
         shinyWidgets::updatePickerInput(
           session = session,
           inputId = "event_selector_rainfall",
@@ -332,24 +373,51 @@ mod_rainfall_analysis_server <- function(id) {
     # 6. Output: Plot and DataTable
     # ----------------------------------------------------------------------------
     output$rainfall_plot <- renderPlot({
-      req(plot_data())
+      req(data_input())
+
       tryCatch({
-        df <- plot_data()
+        df <- data_input() %>%
+          dplyr::select(datetime, rain)
+
         selected_event <- input$event_selector_rainfall
+
+        # Initialize first and last rain as NA
+        first_rain <- NA
+        last_rain <- NA
+
+        # Event-specific filtering and boundaries
         if (!is.null(selected_event) && selected_event != "All events") {
           ev <- as.numeric(selected_event)
           if (!is.null(statistics()) && ev %in% statistics()$event) {
             event_times <- statistics() %>% dplyr::filter(event == ev)
+            first_rain <- event_times$first_rain
+            last_rain <- event_times$last_rain
+
             df <- df %>% dplyr::filter(
-              datetime >= event_times$first_rain,
-              datetime <= event_times$last_rain
+              datetime >= first_rain,
+              datetime <= last_rain
             )
           }
         }
-        create_rainfall_plot(df)
+
+        # Attach columns for first_rain and last_rain
+        elapsed_ref <- if (!is.na(first_rain)) first_rain else min(df$datetime)
+
+        df <- df %>%
+          dplyr::mutate(
+            first_rain = first_rain,
+            last_rain = last_rain,
+            cumulative_rain = cumsum(rain),
+            elapsed_hours = as.numeric(difftime(datetime, elapsed_ref, units = "hours"))
+          )
+        print(head(df))
+        create_rainfall_plot(df, selected_event)
+
       }, error = function(e) {
         handleFatalError(paste("Error rendering rainfall plot:", e$message))
       })
+
+
     })
 
     output$rainfall_table <- DT::renderDT({
@@ -429,33 +497,52 @@ mod_rainfall_analysis_server <- function(id) {
         paste0("rainfall_plot_", Sys.Date(), ".png")
       },
       content = function(file) {
-        req(plot_data())
+        req(data_input())
+
         tryCatch({
-          thematic::thematic_local_theme(
-            thematic::thematic_theme(
-              bg = bslib::bs_get_contrast(bslib::bs_theme(preset = "cosmo"), "secondary"),
-              fg = bslib::bs_get_variables(bslib::bs_theme(preset = "cosmo"), "secondary")
-            )
-          )
-          df <- plot_data()
+          df <- data_input() %>%
+            dplyr::select(datetime, rain)
+
           selected_event <- input$event_selector_rainfall
+
+          # Initialize first and last rain as NA
+          first_rain <- NA
+          last_rain <- NA
+
+          # Event-specific filtering and boundaries
           if (!is.null(selected_event) && selected_event != "All events") {
             ev <- as.numeric(selected_event)
             if (!is.null(statistics()) && ev %in% statistics()$event) {
               event_times <- statistics() %>% dplyr::filter(event == ev)
+              first_rain <- event_times$first_rain
+              last_rain <- event_times$last_rain
+
               df <- df %>% dplyr::filter(
-                datetime >= event_times$first_rain,
-                datetime <= event_times$last_rain
+                datetime >= first_rain,
+                datetime <= last_rain
               )
             }
           }
-          p <- create_rainfall_plot(df)
-          ggplot2::ggsave(file, plot = p + theme_bw(base_size = 20),   width = 1920,
+
+          # Attach columns for first_rain and last_rain
+          elapsed_ref <- if (!is.na(first_rain)) first_rain else min(df$datetime)
+
+          df <- df %>%
+            dplyr::mutate(
+              first_rain = first_rain,
+              last_rain = last_rain,
+              cumulative_rain = cumsum(rain),
+              elapsed_hours = as.numeric(difftime(datetime, elapsed_ref, units = "hours"))
+            )
+
+          p <- create_rainfall_plot(df, selected_event)
+          ggplot2::ggsave(file, plot = p + theme_bw(base_size = 20), width = 1920,
                           height = 1017,
                           units = "px",
                           dpi = 93)
+
         }, error = function(e) {
-          handleFatalError(paste("Error downloading rainfall plot:", e$message))
+          handleFatalError(paste("Error rendering rainfall plot:", e$message))
         })
       }
     )

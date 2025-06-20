@@ -16,17 +16,36 @@ validate_rainfall_file <- function(file_path) {
     # Read the "rainfall_data" sheet
     user_data <- readxl::read_excel(file_path, sheet = "rainfall_data")
 
-    # Check that it contains exactly 2 columns: "datetime" and "rain"
+    # Check number of rows
+    if (nrow(user_data) > 45000) {
+      errors <- c(errors, "The 'rainfall_data' sheet must not contain more than 40,000 rows.")
+    }
+
+    # Check for required columns
     if (ncol(user_data) != 2 || !all(c("datetime", "rain") %in% names(user_data))) {
       errors <- c(errors, "The 'rainfall_data' sheet must contain exactly two columns: 'datetime' and 'rain'.")
     } else {
-      # Check that "datetime" is a datetime type (POSIXct or Date)
-      if (!inherits(user_data$datetime, "POSIXct") && !inherits(user_data$datetime, "Date")) {
-        errors <- c(errors, "The 'datetime' column must be of datetime type.")
+      datetime_col <- user_data$datetime
+      rain_col <- user_data$rain
+
+      # Check that "datetime" is of datetime type
+      if (!inherits(datetime_col, "Date") && !inherits(datetime_col, "POSIXct")) {
+        errors <- c(errors, "The 'datetime' column must be of datetime type (Date or POSIXct).")
       }
+
+      # Check for duplicates in "datetime"
+      if (any(duplicated(datetime_col))) {
+        errors <- c(errors, "The 'datetime' column must not contain duplicate values.")
+      }
+
       # Check that "rain" is numeric
-      if (!is.numeric(user_data$rain)) {
+      if (!is.numeric(rain_col)) {
         errors <- c(errors, "The 'rain' column must be numeric.")
+      }
+
+      # Check for missing values in "rain"
+      if (any(is.na(rain_col))) {
+        errors <- c(errors, "The 'rain' column must not contain missing values (NA).")
       }
     }
   }

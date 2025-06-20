@@ -36,7 +36,7 @@ app_ui <- function(request) {
         mod_flow_analysis_ui("flow_analysis_1")
       ),
       bslib::nav_panel(
-        title = "Infiltration Analysis (under QAQC)",
+        title = "Infiltration Analysis",
         mod_infiltration_analysis_ui("infiltration_analysis_1")
       ),
       bslib::nav_panel(
