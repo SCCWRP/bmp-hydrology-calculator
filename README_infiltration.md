@@ -14,7 +14,7 @@ Equation 1
 
 where $j$ is the smoothing window size, set at 15 min by default; $y_i$ is the smoothed depth data. 
 
-Note: the smoothing window is based on a fixed duration of 15 min, rather than a fixed number of data points. E.g., when the depth data are in 3-minute increments (instead of 1-minute), $y_i$ is the median of 5 points (instead of 15).
+Note: the smoothing window is based on a fixed duration of 15 min, rather than a fixed number of data points, e.g., when the depth data are in 3-minute increments (instead of 1-minute), $y_i$ is the median of 5 points (instead of 15).
 
 2\. Data fitting:
 
