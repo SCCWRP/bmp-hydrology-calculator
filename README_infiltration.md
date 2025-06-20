@@ -36,7 +36,7 @@ The best fit is selected as the maximum $R^2$ achieved by fitting the exponentia
 
 
 <p align="center">
-  <img src="https://github.com/user-attachments/assets/86a6f365-ed3a-4f40-a553-d76a8a77e64b" width="600">
+  <img src="https://github.com/user-attachments/assets/86a6f365-ed3a-4f40-a553-d76a8a77e64b" width="900">
 
 </p>
 
