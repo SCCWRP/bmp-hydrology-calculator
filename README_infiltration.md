@@ -35,10 +35,8 @@ The best fit is selected as the maximum $R^2$ achieved by fitting the exponentia
 Note: A high goodness-of-fit threshold is enforced ($R^2$ > 0.999) to ensure that only the regression limb is considered. If the whole timeseries has been scanned with the 12 h moving window and a suitable model cannot be found, the window size is reduced by 1 h until a suitable fit is found. The minimum window size for a regression limb is 1 h.
 
 
-
-
 <p align="center">
-  <img src="https://private-user-images.githubusercontent.com/55409702/457156196-1b412744-6cba-4b65-a129-bb2912351934.png?jwt=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3NTA0Mzk3OTMsIm5iZiI6MTc1MDQzOTQ5MywicGF0aCI6Ii81NTQwOTcwMi80NTcxNTYxOTYtMWI0MTI3NDQtNmNiYS00YjY1LWExMjktYmIyOTEyMzUxOTM0LnBuZz9YLUFtei1BbGdvcml0aG09QVdTNC1ITUFDLVNIQTI1NiZYLUFtei1DcmVkZW50aWFsPUFLSUFWQ09EWUxTQTUzUFFLNFpBJTJGMjAyNTA2MjAlMkZ1cy1lYXN0LTElMkZzMyUyRmF3czRfcmVxdWVzdCZYLUFtei1EYXRlPTIwMjUwNjIwVDE3MTEzM1omWC1BbXotRXhwaXJlcz0zMDAmWC1BbXotU2lnbmF0dXJlPTFiODQ5MzgxNDhlODk1MWM3NzAzNTkzYmMwNjc4ODBlYTQxNDlhNTFkNmQyZWVjMDkxNjNlYmQyNWVhYzhhNDEmWC1BbXotU2lnbmVkSGVhZGVycz1ob3N0In0.mpB4VqctQmB2fWUF6y7RtV0OnN1vJLek_aEbGJvZJts" width="600">
+  <img src="https://github.com/user-attachments/assets/86a6f365-ed3a-4f40-a553-d76a8a77e64b" width="600">
 
 </p>
 
