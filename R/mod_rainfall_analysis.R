@@ -172,6 +172,7 @@ mod_rainfall_analysis_server <- function(id) {
             title = "Validation Error",
             pre(paste(errors, collapse = "\n")),
             easyClose = TRUE,
+            size = "l",
             footer = modalButton("Close")
           ))
           shinyjs::disable("submit_rainfall")
@@ -587,7 +588,7 @@ mod_rainfall_analysis_server <- function(id) {
                 `Peak 5-min Rainfall Intensity (mm/hr)`,
                 `Peak 10-min Rainfall Intensity (mm/hr)`,
                 `Peak 60-min Rainfall Intensity (mm/hr)`,
-                `Antecedent Dry Period (hours)`
+                `Antecedent Dry Period (hr)`
               )
           } else {
             data <- data %>%
@@ -599,7 +600,7 @@ mod_rainfall_analysis_server <- function(id) {
                 `Peak 5-min Rainfall Intensity (in/hr)` = peak_5_min_rainfall_intensity,
                 `Peak 10-min Rainfall Intensity (in/hr)` = peak_10_min_rainfall_intensity,
                 `Peak 60-min Rainfall Intensity (in/hr)` = peak_60_min_rainfall_intensity,
-                `Antecedent Dry Period (hours)` = antecedent_dry_period
+                `Antecedent Dry Period (hr)` = antecedent_dry_period
               ) %>%
               dplyr::select(
                 `Event ID`,
@@ -609,7 +610,7 @@ mod_rainfall_analysis_server <- function(id) {
                 `Peak 5-min Rainfall Intensity (in/hr)`,
                 `Peak 10-min Rainfall Intensity (in/hr)`,
                 `Peak 60-min Rainfall Intensity (in/hr)`,
-                `Antecedent Dry Period (hours)`
+                `Antecedent Dry Period (hr)`
               )
           }
           write.csv(data, file, row.names = FALSE)

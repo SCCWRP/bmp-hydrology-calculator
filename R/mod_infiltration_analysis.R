@@ -142,12 +142,9 @@ mod_infiltration_analysis_server <- function(id) {
           )
         }
         showModal(modalDialog(
-          title = "Data Errors Report",
-          tagList(
-            pre(error_messages),
-            p("Please fix the errors and reupload. If you have any questions, contact us at ",
-              a("stormwater@sccwrp.org", href = "mailto:stormwater@sccwrp.org"))
-          ),
+          size = "l",
+          title = "Validation Error",
+          pre(paste(error_messages, collapse = "\n")),,
           easyClose = TRUE,
           footer = modalButton("Close")
         ))

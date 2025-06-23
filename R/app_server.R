@@ -10,14 +10,14 @@ app_server <- function(input, output, session) {
   thematic::thematic_shiny(font = "auto")
 
   #Show maintenance modal on startup
-  # showModal(
-  #   modalDialog(
-  #     title = "Maintenance Notice",
-  #     "We're currently performing scheduled maintenance on our application to bring you an even better experience. We expect to be back online by June 23, 2025.",
-  #     easyClose = TRUE,
-  #     footer = modalButton("Close")
-  #   )
-  # )
+  showModal(
+    modalDialog(
+      title = "Maintenance Notice",
+      "We're currently performing scheduled maintenance on our application to bring you an even better experience. We will be back online as soon as possible. Thank you!",
+      easyClose = TRUE,
+      footer = modalButton("Close")
+    )
+  )
 
   mod_about_server("about_1")
 

@@ -17,7 +17,8 @@ mod_faq_ui <- function(id) {
       style = "position: absolute; bottom: 10px; width: 100%; text-align: center;",
       tags$img(
         src = "https://ftp.sccwrp.org/pub/download/PROJECTS/SMC_BMP/sccwrp_logo.jpg",
-        height = "60px"
+        height = "100px",
+        width = "auto"  # or set a specific px value like "200px"
       )
     )
   )

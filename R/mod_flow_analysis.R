@@ -184,6 +184,7 @@ mod_flow_analysis_server <- function(id) {
             title = "Validation Error",
             pre(paste(errors, collapse = "\n")),
             easyClose = TRUE,
+            size = "l",
             footer = modalButton("Close")
           ))
           shinyjs::disable("submit_flow")
