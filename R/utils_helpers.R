@@ -58,18 +58,22 @@ validate_rainfall_file <- function(file_path) {
 validate_flow_file <- function(file_path) {
   errors <- list()
 
-  # Expected data sheet names (ignore "Instructions")
+  # Expected full sheet names (including instructions)
+  expected_all_sheets <- c("Instructions", "inflow1", "inflow2", "outflow", "bypass")
+
+  # Expected data sheet names (ignore "Instructions" for some checks)
   expected_data_sheets <- c("inflow1", "inflow2", "outflow", "bypass")
 
   # Get all sheet names from the file.
   sheets <- readxl::excel_sheets(file_path)
 
-  # Check that all expected data sheets are present.
-  if (!all(expected_data_sheets %in% sheets)) {
+  # Check that there are exactly 5 sheets with the expected names
+  if (!setequal(sheets, expected_all_sheets) || length(sheets) != 5) {
     errors <- c(
       errors,
-      paste0("The uploaded Excel file must contain the following sheets: ",
-             paste(expected_data_sheets, collapse = ", "), ".")
+      paste0("The uploaded Excel file must contain exactly these 5 sheets with exact names: ",
+             paste(expected_all_sheets, collapse = ", "), ". Found: ",
+             paste(sheets, collapse = ", "), ".")
     )
   }
 
@@ -98,6 +102,14 @@ validate_flow_file <- function(file_path) {
           if (!is.numeric(df$flow)) {
             errors <- c(errors, sprintf("In sheet '%s', the 'flow' column must be numeric. Make sure you have correct datatype/data not NA.", sheet))
           }
+
+          # Check for missing values in datetime and flow columns
+          if (any(is.na(df$datetime))) {
+            errors <- c(errors, sprintf("Sheet '%s' has missing values in the 'datetime' column.", sheet))
+          }
+          if (any(is.na(df$flow))) {
+            errors <- c(errors, sprintf("Sheet '%s' has missing values in the 'flow' column.", sheet))
+          }
         }
       }
     }
@@ -112,6 +124,7 @@ validate_flow_file <- function(file_path) {
 }
 
 
+
 # Helper function: Validate the infiltration file and return a list of error messages.
 validate_infiltration_file <- function(file_path) {
   sheets <- readxl::excel_sheets(file_path)
@@ -123,21 +136,42 @@ validate_infiltration_file <- function(file_path) {
     data_df <- readxl::read_excel(file_path, sheet = sheet, .name_repair = "minimal")
     errors <- c()
 
-    # Validate "datetime" column.
+    # Check for "datetime" column
     if (!"datetime" %in% names(data_df)) {
       errors <- c(errors, paste("Sheet", sheet, ": Missing column 'datetime'."))
-    } else {
-      if (any(is.na(data_df$datetime))) {
-        errors <- c(errors, paste("Sheet", sheet, ": 'datetime' column has missing values."))
-      }
-      parsed_time <- as.POSIXct(data_df$datetime, tz = "UTC",
-                                tryFormats = c("%Y-%m-%d %H:%M:%S", "%Y-%m-%d"))
-      if (all(is.na(parsed_time))) {
-        errors <- c(errors, paste("Sheet", sheet, ": 'datetime' column is not in a valid timestamp format."))
-      }
+      error_report[[sheet]] <- errors
+      next
     }
 
-    # Check for duplicate column names.
+    # Coerce to character in case it's not
+    datetime_vals <- as.character(data_df$datetime)
+
+    # Check for missing values in datetime column
+    if (any(is.na(datetime_vals) | trimws(datetime_vals) == "")) {
+      errors <- c(errors, paste("Sheet", sheet, ": 'datetime' column has missing or blank values."))
+    }
+
+    # Try parsing datetime with tryCatch to prevent crashes
+    parsed_time <- tryCatch({
+      suppressWarnings(as.POSIXct(datetime_vals, tz = "UTC",
+                                  tryFormats = c("%Y-%m-%d %H:%M:%S",
+                                                 "%Y-%m-%d",
+                                                 "%m/%d/%Y %H:%M",
+                                                 "%m/%d/%Y")))
+    }, error = function(e) {
+      rep(NA, length(datetime_vals))
+    })
+
+    # If parsing failed entirely, return error and skip further validation
+    if (all(is.na(parsed_time))) {
+      errors <- c(errors, paste("Sheet", sheet, ": 'datetime' column is not in a recognizable datetime format. Make sure to check ALL values, the format is mm/dd/yy"))
+      error_report[[sheet]] <- errors
+      next
+    } else {
+      data_df$datetime <- parsed_time
+    }
+
+    # Check for duplicate column names
     duplicate_names <- names(data_df)[duplicated(names(data_df))]
     if (length(duplicate_names) > 0) {
       for (name in duplicate_names) {
@@ -145,7 +179,7 @@ validate_infiltration_file <- function(file_path) {
       }
     }
 
-    # Validate that all other columns are numeric and have no missing values.
+    # Validate all other columns (must be numeric and complete)
     other_cols <- setdiff(names(data_df), "datetime")
     for (col in other_cols) {
       if (!is.numeric(data_df[[col]])) {
@@ -156,11 +190,13 @@ validate_infiltration_file <- function(file_path) {
           data_df[[col]] <- converted
         }
       }
+
       if (any(is.na(data_df[[col]]))) {
         errors <- c(errors, paste("Sheet", sheet, ": Column", col, "must have no missing values."))
       }
     }
 
+    # Save either the errors or the valid sheet
     if (length(errors) > 0) {
       error_report[[sheet]] <- errors
     } else {
@@ -168,8 +204,10 @@ validate_infiltration_file <- function(file_path) {
     }
   }
 
-  list(errors = error_report, valid_data = valid_data)
+  return(list(errors = error_report, valid_data = valid_data))
 }
+
+
 
 # Helper to handle fatal errors: displays an error modal and stops the app.
 handleFatalError <- function(errorMessage) {

@@ -124,7 +124,7 @@ mod_rainfall_analysis_server <- function(id) {
         ggplot2::geom_line(color = "steelblue", size = 1.5) +
         ggplot2::labs(
           x = "Elapsed hours from the first rain tip",
-          y = paste("Cumulative rainfall (", rain_unit(), ")", sep = ""),
+          y = paste("Depth (", rain_unit(), ")", sep = ""),
           title = if (!is.null(selected_event) && selected_event != "All events") {
             paste("Event", selected_event)
           } else {
