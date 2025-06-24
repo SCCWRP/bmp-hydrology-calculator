@@ -54,12 +54,9 @@ mod_about_ui <- function(id) {
       "API Documentation",
       onclick ="window.open('https://nexus.sccwrp.org/bmp_hydrology/api/docs', '_blank')"
     ),
-    tags$div(
-      style = "position: absolute; bottom: 10px; width: 100%; text-align: center;",
-      tags$img(
-        src = "https://ftp.sccwrp.org/pub/download/PROJECTS/SMC_BMP/sccwrp_logo.jpg",
-        height = "60px"
-      )
+    tags$img(
+      src = "https://ftp.sccwrp.org/pub/download/PROJECTS/SMC_BMP/sccwrp_logo.jpg",
+      height = "60px"
     )
   )
 }
