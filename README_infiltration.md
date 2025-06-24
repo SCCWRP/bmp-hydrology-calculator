@@ -14,7 +14,7 @@ Equation 1
 
 where $j$ is the smoothing window size, set at 15 min by default; $y_i$ is the smoothed depth data. 
 
-Note: the smoothing window is based on a fixed duration of 15 min, rather than a fixed number of data points, e.g., when the depth data are in 3-minute increments (instead of 1-minute), $y_i$ is the median of 5 points (instead of 15).
+**Note**: the smoothing window is based on a fixed duration of 15 min, rather than a fixed number of data points, e.g., when the depth data are in 3-minute increments (instead of 1-minute), $y_i$ is the median of 5 points (instead of 15).
 
 2\. Data fitting:
 
@@ -36,9 +36,10 @@ The best fit is selected as the maximum $R^2$ achieved by fitting the exponentia
 
 
 <p align="center">
-  <img src="https://github.com/user-attachments/assets/86a6f365-ed3a-4f40-a553-d76a8a77e64b" width="900">
-
+  <img src="https://github.com/user-attachments/assets/86a6f365-ed3a-4f40-a553-d76a8a77e64b"
+       style="max-width: 900px; max-height: 600px; height: auto; width: auto;">
 </p>
+
 
 3\. Infiltration rate calculation: 
 Once the best-fitting time window is identified, the **infiltration rate** (length/time) is calculated using Equation 3, based on the rate constant $k$ and the average depth within the selected window (from step 2).
