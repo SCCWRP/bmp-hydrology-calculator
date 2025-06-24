@@ -23,6 +23,6 @@ $$peak \ i_{∆t}=\max \left( \frac{\sum\limits_{t_j}^{(t_j + ∆t)} P_i}{∆t} 
 Equation 3
 </div>
 
-where $peak \ i⁡_{∆t}$ represents the **peak ∆t rainfall intensity** (length/time), calculated as the maximum rainfall intensity value of over a moving average over a window of duration ∆t (time), e.g., **5 min**, **10 min**, or **60 min**, for the rainfall event. For example, $peak \ i_{5min}$ is the maximum 5 min average rainfall intensity averaged over any 5 min interval observed during the entire rainfall duration.
+where $peak \ i⁡_{∆t}$ represents the **peak ∆t rainfall intensity** (length/time), calculated as the maximum rainfall intensity value over a moving average of duration ∆t (time), e.g., **5 min**, **10 min**, or **60 min**, for the rainfall event. For example, $peak \ i_{5min}$ is the maximum 5 min average rainfall intensity averaged over any 5 min interval observed during the entire rainfall duration.
 
 The **antecedent dry period** (time) is the elapsed time between the last rain gauge tip of an event and the first rain gauge tip of the subsequent event. This value is not calculated for the first rainfall event in the uploaded dataset.
