@@ -61,7 +61,7 @@ mod_flow_analysis_ui <- function(id) {
         span(
           strong("Step 4 (Optional): Select start and end of the hydrograph", bsicons::bs_icon("question-circle"))
         ),
-        "Autopopulated based on inflow1 and outflow tab."
+        "Autopopulated based on the minimum and maximum of all flow types."
       ),
       shinyWidgets::airDatepickerInput(
         inputId = ns("start_date_flow"),
