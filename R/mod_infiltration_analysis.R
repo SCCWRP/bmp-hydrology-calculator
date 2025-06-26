@@ -442,37 +442,6 @@ mod_infiltration_analysis_server <- function(id) {
       }
     })
 
-    # Render the metrics table.
-    output$table_infiltration <- DT::renderDT({
-      req(selected_result())
-      res <- selected_result()
-      if (!is.null(res$error)) {
-        DT::datatable(data.frame(Error = res$error))
-      } else {
-        dt <- res$table
-        col_mapping <- c(
-          "Piezometer"        = "Piezometer",
-          "Infiltration_rate" = paste("Infiltration Rate (", input$depth_unit_infiltration, "/hr)", sep=""),
-          "Duration_hrs"      = "Duration (hr)"
-          #"Average_depth"     = paste("Average Depth (", input$depth_unit_infiltration, ")", sep="")
-        )
-
-        names(dt) <- sapply(names(dt), function(x) {
-          if (x %in% names(col_mapping)) col_mapping[[x]] else x
-        })
-        DT::datatable(
-          dt,
-          rownames = FALSE,
-          options = list(
-            dom = 't',
-            paging = FALSE,
-            ordering = FALSE
-          )
-        )
-      }
-    })
-
-
     # Download handler for the plot.
     output$download_plot <- downloadHandler(
       filename = function() {
@@ -585,51 +554,79 @@ mod_infiltration_analysis_server <- function(id) {
       combined
     })
 
-    # --- Render Individual Storm Table ---
     output$table_infiltration <- DT::renderDT({
       req(selected_result())
       res <- selected_result()
+
       if (!is.null(res$error)) {
         DT::datatable(data.frame(Error = res$error))
       } else {
         dt <- res$table
+
+        # Unit conversion from inches to selected unit
+        unit <- input$depth_unit_infiltration
+        threshold_in_inches <- 150
+        threshold_converted <- switch(
+          unit,
+          "mm" = threshold_in_inches * 25.4,
+          "cm" = threshold_in_inches * 2.54,
+          "in" = threshold_in_inches,
+          threshold_in_inches  # fallback
+        )
+
+        # Round for nicer display
+        threshold_label <- paste0(round(threshold_converted, 1), " ", unit, "/hr")
+
+        # Convert infiltration rate to inches for logic check
+        infiltration_rate_in_inches <- switch(unit,
+                                              "mm" = dt$Infiltration_rate / 25.4,
+                                              "cm" = dt$Infiltration_rate / 2.54,
+                                              "in" = dt$Infiltration_rate,
+                                              dt$Infiltration_rate
+        )
+
+        # Generate message column with range embedded
+        dt$message <- ifelse(
+          infiltration_rate_in_inches < threshold_in_inches,
+          paste("Infiltration rate within normal range (<", threshold_label, ")"),
+          paste("Warning: Infiltration rate is too high (>", threshold_label, ")")
+        )
+
+        # Rename columns
         col_mapping <- c(
-          "Piezometer"        = "Piezometer",
-          "Infiltration_rate" = paste("Infiltration Rate (", input$depth_unit_infiltration, "/hr)", sep=""),
-          "Duration_hrs"      = "Duration (hr)"
-          #"Average_depth"     = paste("Average Depth (", input$depth_unit_infiltration, ")", sep="")
+          "Piezometer" = "Piezometer",
+          "Infiltration_rate" = paste("Infiltration Rate (", unit, "/hr)", sep=""),
+          "Duration_hrs" = "Duration (hr)",
+          "message" = "Message"
         )
         names(dt) <- sapply(names(dt), function(x) {
           if (x %in% names(col_mapping)) col_mapping[[x]] else x
         })
+
+        # Save full message strings for color matching
+        msg_normal <- paste("Infiltration rate within normal range (<", threshold_label, ")")
+        msg_warning <- paste("Warning: Infiltration rate is too high (>", threshold_label, ")")
+
         DT::datatable(
           dt,
           rownames = FALSE,
-          options = list(dom = 't', paging = FALSE, ordering = FALSE)
-        )
+          options = list(
+            dom = 't',
+            paging = FALSE,
+            ordering = FALSE
+          )
+        ) %>%
+          DT::formatStyle(
+            "Message",
+            target = 'cell',
+            backgroundColor = DT::styleEqual(
+              c(msg_normal, msg_warning),
+              c("lightgreen", "yellow")
+            )
+          )
       }
     })
 
-    # --- Render Combined All Results Table ---
-    output$table_all_results_infiltration <- DT::renderDT({
-      req(all_results_table())
-      dt <- all_results_table()
-      col_mapping <- c(
-        "storm_name"        = "Storm Name",
-        "Piezometer"        = "Piezometer",
-        "Infiltration_rate" = paste("Infiltration Rate (", input$depth_unit_infiltration, "/hr)", sep=""),
-        "Duration_hrs"      = "Duration (hr)"
-        #"Average_depth"     = paste("Average Depth (", input$depth_unit_infiltration, ")", sep="")
-      )
-      names(dt) <- sapply(names(dt), function(x) {
-        if (x %in% names(col_mapping)) col_mapping[[x]] else x
-      })
-      DT::datatable(
-        dt,
-        rownames = FALSE,
-        options = list(dom = 't', paging = FALSE, ordering = FALSE)
-      )
-    })
 
     # --- Download Handler for Individual Storm Table ---
     output$download_table_infiltration <- downloadHandler(
