@@ -10,7 +10,7 @@ $$ V=\int_0^t Q dt \approx \sum_{n=1}^i \frac{(Q_i+Q_{i-1})}{2}(t_i-t_{i-1}) $$
 Equation 1
 </div>
 
-where $V$ is the runoff volume ($\textnormal{length}^3$); $Q_i$ is the flow rate ($\textnormal{length}^3$/time) recorded at time $t_i$; $t_i$ represents the timestamps, with $i$ (ranging from $1$ to $n$) denoting the index of each recorded values within the dataset or the user defined period of interest.
+where $V$ is the runoff volume ($length^3$); $Q_i$ is the flow rate ($length^3$/time) recorded at time $t_i$; $t_i$ represents the timestamps, with $i$ (ranging from $1$ to $n$) denoting the index of each recorded values within the dataset or the user defined period of interest.
 
 **Peak flow** is determined as the maximum flow rate observed over a 5-min period. If data are reported at intervals shorter than 5 min, a 5 min moving average is applied to smooth the flow data; if the data are reported at intervals longer than 5 min, interpolation is used to estimate flow rates at 5 min intervals for consistent peak flow determination.
 
@@ -19,7 +19,7 @@ $$ Q_p=max(Q_j )$$
 Equation 2
 </div>
 
-where $𝑄_{𝑝}$ represents the peak flow rate during the rain event ($\textnormal{length}^3$/time), $𝑄_j$ ($\textnormal{length}^3$/time) represents the flow rate calculated over 5 min intervals ($𝑡_{𝑗+1}$ − $𝑡_𝑗$ = 5 min).
+where $𝑄_{𝑝}$ represents the peak flow rate during the rain event ($length^3$/time), $𝑄_j$ ($length^3$/time) represents the flow rate calculated over 5 min intervals ($𝑡_{𝑗+1}$ − $𝑡_𝑗$ = 5 min).
 
 Hydrologic mitigation or alteration provided by BMPs is often reported as the percent change in a characteristic (flow rate or volume) between the inflow and the outflow. This is illustrated in figures below for the simplest data collection scenario:
 
