@@ -13,7 +13,7 @@ $$
 Equation 1
 </div>
 
-where $i$ is the index of the original data; $k$ is half of the window size which is set to 15-minute by default. $y_i$ represents the smoothed depth data.
+where $i$ is the index of the original data; $k$ is half of the window size which is set to 15-minute by default. $\tilde{y_i}$ represents the smoothed depth data.
 
 **Note**: the smoothing window is based on a fixed duration of 15 min, rather than a fixed number of data points, e.g., when the depth data are in 3-minute increments (instead of 1-minute), $y_i$ is the median of 5 points (instead of 15).
 
