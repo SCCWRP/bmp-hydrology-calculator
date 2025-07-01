@@ -6,14 +6,14 @@ To reduce noise and enhance the clarity of trends in the depth data, a median fi
 
 
 $$
-\tilde{y_i} = \text{median}(y_{i-k}, \ldots, y_i, \ldots, y_{i+k})
+\tilde{y_i} = \text{median}(y_{i-j}, \ldots, y_i, \ldots, y_{i+j})
 $$
 
 <div align="right"> 
 Equation 1
 </div>
 
-where $i$ is the index of the original data; $k$ is half of the window size which is set to 15-minute by default. $\tilde{y_i}$ represents the smoothed depth data.
+where $i$ is the index of the original data; $j$ is half of the window size which is set to 15-minute by default. $\tilde{y_i}$ represents the smoothed depth data.
 
 **Note**: the smoothing window is based on a fixed duration of 15 min, rather than a fixed number of data points, e.g., when the depth data are in 3-minute increments (instead of 1-minute), $y_i$ is the median of 5 points (instead of 15).
 
