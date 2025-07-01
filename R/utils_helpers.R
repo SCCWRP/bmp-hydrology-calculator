@@ -85,6 +85,11 @@ validate_flow_file <- function(file_path) {
     if (sheet %in% sheets) {
       df <- readxl::read_excel(file_path, sheet = sheet)
 
+      if (nrow(df) > 45000) {
+        errors <- c(errors, sprintf("Sheet '%s' exceeds the maximum allowed number of rows (45,000). Found %d rows.", sheet, nrow(df)))
+        next
+      }
+
       # Check that there are exactly 2 columns: "datetime" and "flow"
       if (ncol(df) != 2 || !all(c("datetime", "flow") %in% names(df))) {
         errors <- c(errors, paste0("Sheet '", sheet, "' must contain exactly two columns: 'datetime' and 'flow'."))
@@ -135,6 +140,12 @@ validate_infiltration_file <- function(file_path) {
   for (sheet in sheets) {
     data_df <- readxl::read_excel(file_path, sheet = sheet, .name_repair = "minimal")
     errors <- c()
+
+    if (nrow(data_df) > 45000) {
+      errors <- c(errors, paste("Sheet", sheet, ": Exceeds the maximum allowed number of rows (45,000). Found", nrow(data_df), "rows."))
+      error_report[[sheet]] <- errors
+      next
+    }
 
     # Check for "datetime" column
     if (!"datetime" %in% names(data_df)) {

@@ -220,7 +220,10 @@ mod_rainfall_analysis_server <- function(id) {
                     shinyWidgets::pickerInput(
                       inputId = ns("event_selector_rainfall"),
                       choices = NULL,
-                      multiple = FALSE
+                      multiple = FALSE,
+                      options = shinyWidgets::pickerOptions(
+                        container="body"
+                      )
                     ),
                     shinyWidgets::downloadBttn(ns("download_plot_rainfall"), "Download plot")
                   )

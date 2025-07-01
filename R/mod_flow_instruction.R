@@ -19,7 +19,8 @@ There are 5 worksheets in the data template: instructions, inflow1, inflow2, out
 1. Each tab must contain exactly two columns, one for the measured timestamps data and one for the associated values.
 2. The timestamp should be in 24-hour format (mm/dd/yy hh:mm:ss).
 3. All tabs must use the same flow unit. Flow data must be in units of L/s, gpm, or cfs.
-4. **Do not change the column names and the tab names from the template.**
+4. Data cannot exceed 45000 rows.
+5. **Do not change the column names and the tab names from the template.**
 "
 #' @importFrom shiny NS tagList HTML
 mod_flow_instruction_ui <- function(id) {

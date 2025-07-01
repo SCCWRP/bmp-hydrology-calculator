@@ -25,6 +25,7 @@ The data sheet contains at least 2 worksheets: instructions and an additional wo
 1. Timestamps should be in 24-hour format (mm/dd/yy hh:mm:ss).
 2. For each infiltration event, the first column contains the datetimes of each water depth measurement. Enter water level data on adjacent columns from one or more sensors that share the same timestamp. Label each column with a unique name (e.g. the sensor identifier). Depth should be recorded as the numeric value only; the unit of measurement (mm, cm, in) can be selected from the dropdown menu.
 3. Data from multiple storm events can also be submitted in a single file by using separate worksheets for each event. In this case, all data across tabs must use the same unit of measurement, and each tab must include a timestamp column labeled datetime. Worksheets can be renamed to reflect specific storm events.
+4. Data cannot exceed 45000 rows.
 "
 
   bslib::card(

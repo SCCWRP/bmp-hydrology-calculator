@@ -50,6 +50,11 @@ mod_about_ui <- function(id) {
       onclick ="window.open('https://forms.office.com/Pages/ResponsePage.aspx?id=PfKopOEaHEuZAuqhUwKBkLfF7RbFiCdKlqnmjECrBFxUMTBTVFpTSlcxM1VJSkM3NUdQQTdBSU5ENi4u', '_blank')"
     ),
     shinyWidgets::actionBttn(
+      "feedback",
+      "Feedback Form for Infiltration Analysis",
+      onclick ="window.open('https://forms.office.com/Pages/ResponsePage.aspx?id=PfKopOEaHEuZAuqhUwKBkLfF7RbFiCdKlqnmjECrBFxUNElCTFBLWlFPQUZGUTA0QTdFMkFXTDRTNi4u', '_blank')"
+    ),
+    shinyWidgets::actionBttn(
       "apidoc",
       "API Documentation",
       onclick ="window.open('https://nexus.sccwrp.org/bmp_hydrology/api/docs', '_blank')"

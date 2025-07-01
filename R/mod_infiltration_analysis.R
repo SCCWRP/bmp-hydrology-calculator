@@ -179,32 +179,39 @@ mod_infiltration_analysis_server <- function(id) {
             row_heights = c(2, 1),
             bslib::card(
               full_screen = FALSE,
-              bslib::card_header(
-                bslib::layout_columns(
-                  col_widths = c(6, 6),
-                  # Custom label placed in its own column
-                  tags$label(
-                    "Choose a storm event to view the result:",
-                    `for` = ns("choose_rain_event_infiltration"),
-                    class = "form-label",
-                    style = "margin-top: 0.7rem; font-weight: bold;"  # Bold text
-                  ),
-                  # Select input without a label
-                  selectInput(
-                    ns("choose_rain_event_infiltration"),
-                    label = NULL,
-                    choices = NULL
-                  )
-                )
-              ),
+              # bslib::card_header(
+              #   bslib::layout_columns(
+              #     col_widths = c(6, 6),
+              #     # Custom label placed in its own column
+              #     tags$label(
+              #       "Choose a storm event to view the result:",
+              #       `for` = ns("choose_rain_event_infiltration"),
+              #       class = "form-label",
+              #       style = "margin-top: 0.7rem; font-weight: bold;"  # Bold text
+              #     ),
+              #     # Select input without a label
+              #
+              #   )
+              # ),
               bslib::card_body(
                 plotOutput(ns("plot_infiltration"), height = "100%")
               ),
               bslib::card_footer(
                 bslib::layout_columns(
-                  col_widths = c(6, 6),
-                  shinyWidgets::downloadBttn(ns("download_plot_infiltration"), "Download this plot"),
-                  shinyWidgets::downloadBttn(ns("download_all_plots_infiltration"), "Download all plots")
+                  col_widths = c(2, 6, 4),
+                  tags$label(
+                    "Choose a storm event:",
+                    style = "margin-top: 0.7rem; font-weight: bold;"
+                  ),
+                  shinyWidgets::pickerInput(
+                    ns("choose_rain_event_infiltration"),
+                    choices = NULL,
+                    options = shinyWidgets::pickerOptions(
+                      container="body"
+                    )
+                  ),
+                  shinyWidgets::downloadBttn(ns("download_plot_infiltration"), "Download this plot")
+                  #shinyWidgets::downloadBttn(ns("download_all_plots_infiltration"), "Download all plots")
                 )
               )
             ),
@@ -414,7 +421,7 @@ mod_infiltration_analysis_server <- function(id) {
 
       # Update the dropdown with only successfully processed sheets.
       sheets <- names(results_list)
-      updateSelectInput(session, "choose_rain_event_infiltration",
+      shinyWidgets::updatePickerInput(session, "choose_rain_event_infiltration",
                         choices = sheets, selected = if (length(sheets) > 0) sheets[1] else NULL)
 
       updateNavbarPage(session, "main_infiltration", selected = "Result")
