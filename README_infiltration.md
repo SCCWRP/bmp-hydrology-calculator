@@ -4,15 +4,16 @@ A decay rate fits the recession limb of ponded water depth in a structural BMP a
 
 To reduce noise and enhance the clarity of trends in the depth data, a median filter is applied to depth data using Equation 1:
 
+
 $$
-y_i = \text{median}(y_{i-j}, \ldots, y_i, \ldots, y_{i+j})
+\tilde{y_i} = \text{median}(y_{i-k}, \ldots, y_i, \ldots, y_{i+k})
 $$
 
 <div align="right"> 
 Equation 1
 </div>
 
-where $j$ is the smoothing window size, set at 15 min by default; $y_i$ is the smoothed depth data. 
+where $i$ is the index of the original data; $k$ is half of the window size which is set to 15-minute by default. $y_i$ represents the smoothed depth data.
 
 **Note**: the smoothing window is based on a fixed duration of 15 min, rather than a fixed number of data points, e.g., when the depth data are in 3-minute increments (instead of 1-minute), $y_i$ is the median of 5 points (instead of 15).
 
