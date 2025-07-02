@@ -48,43 +48,6 @@ mod_infiltration_analysis_ui <- function(id) {
       "Submit data when validation is successful."
     ),
     shinyjs::disabled(shinyWidgets::actionBttn(ns("submit_infiltration"), "Submit")),
-    # bslib::card_body(
-    #   bslib::tooltip(
-    #     span(strong("Constants for smoothing and regression", bsicons::bs_icon("question-circle"))),
-    #     "These numbers are for informative only. They are not adjustable by the user for now.
-    #     Hover on the constants for more information."
-    #   ),
-    #   shinyjs::disabled(
-    #     bslib::tooltip(
-    #       numericInput(
-    #         inputId = ns("smoothing_window"),
-    #         label = "Smoothing window (min)",
-    #         value = 5
-    #       ),
-    #       "5 minute window for median filter"
-    #     )
-    #   ),
-    #   shinyjs::disabled(
-    #     bslib::tooltip(
-    #       numericInput(
-    #         inputId = ns("regression_window"),
-    #         label = "Regression window",
-    #         value = 720
-    #       ),
-    #       "12 hour window for fitted regression"
-    #     )
-    #   ),
-    #   shinyjs::disabled(
-    #     bslib::tooltip(
-    #       numericInput(
-    #         inputId = ns("regression_threshold"),
-    #         label = "Regression threshold",
-    #         value = 0.999
-    #       ),
-    #       "Regression tolerance can be very high due to smoothness of fit"
-    #     )
-    #   )
-    # )
   )
 
   main_panel <- bslib::navset_card_underline(
@@ -179,20 +142,6 @@ mod_infiltration_analysis_server <- function(id) {
             row_heights = c(2, 1),
             bslib::card(
               full_screen = FALSE,
-              # bslib::card_header(
-              #   bslib::layout_columns(
-              #     col_widths = c(6, 6),
-              #     # Custom label placed in its own column
-              #     tags$label(
-              #       "Choose a storm event to view the result:",
-              #       `for` = ns("choose_rain_event_infiltration"),
-              #       class = "form-label",
-              #       style = "margin-top: 0.7rem; font-weight: bold;"  # Bold text
-              #     ),
-              #     # Select input without a label
-              #
-              #   )
-              # ),
               bslib::card_body(
                 plotOutput(ns("plot_infiltration"), height = "100%")
               ),
@@ -303,8 +252,8 @@ mod_infiltration_analysis_server <- function(id) {
           ## Process best-fit line results.
           calc_results <- result$calc_results
           best_fit_df <- data.frame(
-            datetime   = as.POSIXct(character()),
-            best_fit   = numeric(),
+            datetime = as.POSIXct(character()),
+            best_fit = numeric(),
             piezometer = character(),
             stringsAsFactors = FALSE
           )
@@ -315,8 +264,8 @@ mod_infiltration_analysis_server <- function(id) {
                 ext_time <- as.POSIXct(ext_time, format = "%a, %d %b %Y %H:%M:%S GMT", tz = "GMT")
                 best_fit_line <- calc_results[[piez]]$best_fit_line
                 temp_df <- data.frame(
-                  datetime   = ext_time,
-                  best_fit   = as.numeric(unlist(best_fit_line)),
+                  datetime = ext_time,
+                  best_fit = as.numeric(unlist(best_fit_line)),
                   piezometer = piez,
                   stringsAsFactors = FALSE
                 )
@@ -331,11 +280,11 @@ mod_infiltration_analysis_server <- function(id) {
             for (piez in names(calc_results)) {
               if (!is.null(calc_results[[piez]])) {
                 metrics_list[[piez]] <- data.frame(
-                  Piezometer        = piez,
+                  Piezometer = piez,
                   Infiltration_rate = round(calc_results[[piez]]$infiltration_rate, 2),
-                  Duration_hrs      = round(calc_results[[piez]]$delta_x, 2),
-                  #Average_depth     = round(calc_results[[piez]]$y_average, 2),
-                  stringsAsFactors  = FALSE
+                  Duration_hrs = round(calc_results[[piez]]$delta_x, 2),
+                  #Average_depth = round(calc_results[[piez]]$y_average, 2),
+                  stringsAsFactors = FALSE
                 )
               }
             }
@@ -359,7 +308,7 @@ mod_infiltration_analysis_server <- function(id) {
           # Check if there are any -88 values in best_fit
           has_undetermined <- any(best_fit_df$best_fit == -88)
           if (has_undetermined) {
-            metrics_df$Infiltration_rate <- "Undetermined"
+            metrics_df$Infiltration_rate <- "Insufficient data to determine infiltration rate. Infiltration must occur over at least 1-hr."
           }
 
           # Create base plot
@@ -462,10 +411,14 @@ mod_infiltration_analysis_server <- function(id) {
           )
         )
 
-        ggplot2::ggsave(file, plot = selected_result()$plot + theme_bw(base_size = 20),   width = 1920,
-                        height = 1017,
-                        units = "px",
-                        dpi = 93)
+        ggplot2::ggsave(
+          file,
+          plot = selected_result()$plot + theme_bw(base_size = 20),
+          width = 1920,
+          height = 1017,
+          units = "px",
+          dpi = 93
+        )
 
       }
     )
@@ -511,10 +464,14 @@ mod_infiltration_analysis_server <- function(id) {
               )
             )
 
-            ggplot2::ggsave(png_file, plot = res$plot + theme_bw(base_size = 20),   width = 1920,
-                            height = 1017,
-                            units = "px",
-                            dpi = 93)
+            ggplot2::ggsave(
+              png_file,
+              plot = res$plot + theme_bw(base_size = 20),
+              width = 1920,
+              height = 1017,
+              units = "px",
+              dpi = 93
+            )
 
           } else {
             # Optionally, create a placeholder image for sheets with errors.
@@ -585,18 +542,19 @@ mod_infiltration_analysis_server <- function(id) {
         threshold_label <- paste0(round(threshold_converted, 1), " ", unit, "/hr")
 
         # Convert infiltration rate to inches for logic check
-        infiltration_rate_in_inches <- switch(unit,
-                                              "mm" = dt$Infiltration_rate / 25.4,
-                                              "cm" = dt$Infiltration_rate / 2.54,
-                                              "in" = dt$Infiltration_rate,
-                                              dt$Infiltration_rate
+        infiltration_rate_in_inches <- switch(
+          unit,
+          "mm" = dt$Infiltration_rate / 25.4,
+          "cm" = dt$Infiltration_rate / 2.54,
+          "in" = dt$Infiltration_rate,
+          dt$Infiltration_rate
         )
 
         # Generate message column with range embedded
         dt$message <- ifelse(
           infiltration_rate_in_inches < threshold_in_inches,
-          paste("Infiltration rate within normal range (<", threshold_label, ")"),
-          paste("Warning: Infiltration rate is too high (>", threshold_label, ")")
+          paste("Infiltration rate within acceptable limit (<", threshold_label, ")"),
+          paste("Infiltration rate exceeds  ", threshold_label, ")")
         )
 
         # Rename columns
@@ -611,8 +569,8 @@ mod_infiltration_analysis_server <- function(id) {
         })
 
         # Save full message strings for color matching
-        msg_normal <- paste("Infiltration rate within normal range (<", threshold_label, ")")
-        msg_warning <- paste("Warning: Infiltration rate is too high (>", threshold_label, ")")
+        msg_normal <- paste("Infiltration rate within acceptable limit (<", threshold_label, ")")
+        msg_warning <- paste("Infiltration rate exceeds  ", threshold_label, ")")
 
         DT::datatable(
           dt,
@@ -646,14 +604,14 @@ mod_infiltration_analysis_server <- function(id) {
           rename(
             piezometer = Piezometer,
             infiltration_rate = Infiltration_rate,
-            duration          = Duration_hrs,
-            average_depth     = Average_depth
+            duration = Duration_hrs,
+            average_depth = Average_depth
           ) %>%
           # Add unit columns for each variable.
           mutate(
             infiltration_rate_unit = paste0(input$depth_unit_infiltration, "/hr"),
-            duration_unit          = "hr",
-            average_depth_unit     = input$depth_unit_infiltration
+            duration_unit = "hr",
+            average_depth_unit = input$depth_unit_infiltration
           ) %>%
           # Reorder columns so that the new unit columns follow their respective measures.
           select(
