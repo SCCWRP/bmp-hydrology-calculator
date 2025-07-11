@@ -66,5 +66,7 @@ Equation 4
 
 where $y_{ave}$ is the average depth within the selected time window, $y_i$ represents individual smoothed depth values within the window, and $n$ is the number of data points in the window.
 
+**Note**: A warning message will be returned if the calculated infiltration rate exceeds 150 in/hr (3810  mm/hr).
+
 SCCWRP is grateful to Matthew McGauley from Villanova University for providing
 foundational logic for the infiltration calculator.
