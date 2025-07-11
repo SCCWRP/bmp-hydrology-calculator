@@ -78,12 +78,12 @@ The BMP Hydrology Calculator outputs include downloadable tables and figures. He
 
 *Table 1: Example rainfall analysis results showing unique rainfall events with intensity and dry period statistics.*
 
-| Event ID | Storm DateTime  | Total Rainfall (in) | Avg Intensity (in/hr) | Peak 5-min Intensity (in/hr) | Peak 60-min Intensity (in/hr) | Antecedent Dry Period (hours) |
-|:--------:|:------------:|:------------:|:------------:|:------------:|:------------:|:------------:|
-| 1        | 2/14/1950 16:59 | 3.6 | 8.1 | 12.2 | 3.6 | NA |
-| 2        | 2/23/1950 4:21  | 54.6 | 0.8 | 15.2 | 6.6 | 1.3 |
-| 3        | 2/27/1950 17:46 | 3.1 | 0.3  | 6.1  | 1.8  | 1.7  |
-| 4        | 2/28/1950 21:56 | 26.2 | 1.6    | 12.2     | 5.3    | 0.7   |
+| Event ID | Storm Date Time  | Total Rainfall (mm) | Avgerage Rainfall Intensity (mm/hr) | Peak 5-min Rainfall Intensity (mm/hr) | Peak 10-min Rainfall Intensity (mm/hr) | Peak 60-min Rainfall Intensity (in/hr) | Antecedent Dry Period (hr) |
+|:--------:|:------------:|:------------:|:------------:|:------------:|:------------:|:------------:|:------------:|
+| 1        | 2/14/1950 16:59 | 3.6 | 7.9 | 12.2 |10.7| 3.6 | NA |
+| 2        | 2/23/1950 4:22  | 54.6 | 0.8 | 15.2 |12.2 | 6.6 | 8.5 |
+| 3        | 2/27/1950 17:47 | 3.1 | 0.3  | 6.1  |6.1 | 1.8  | 1.7  |
+| 4        | 2/28/1950 21:57 | 26.2 | 1.7    | 12.2     | 9.1    |5.3    | 0.7   |
 
 **Flow Analysis**: User-uploaded hydrograph data are visualized and analyzed. Output statistics include the peak flowrate, the runoff duration, and the total runoff volume. Comparisons of inflow/outflow are available for BMP performance assessments. Multiple BMP configurations are digestable by the Flow Analysis calculator; the example highlighted in Figure 3 is a BMP that has two inputs, outflow, and bypass all measured.
 
