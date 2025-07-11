@@ -35,7 +35,8 @@ The best fit is selected as the maximum $R^2$ achieved by fitting the exponentia
 
 **Note**: A high goodness-of-fit threshold is enforced ($R^2$ > 0.999) to ensure that only the regression limb is considered. If the whole timeseries has been scanned with the 12 h moving window and a suitable model cannot be found, the window size is reduced by 1 h until a suitable fit is found. The minimum window size for a regression limb is 1 h.
 
-The minimum ponded water depth must exceed 2 inches and infiltration must occur over at least one hour for the calculator to return a result.
+Infiltration must occur of at least 1-hr and the change in ponded water depth in the regression window must exceed 2-in for the calculator to return a result. A warning message will be returned by the calculator if either of these conditions are violated.
+
 
 
 <p align="center">
