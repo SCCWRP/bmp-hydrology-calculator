@@ -19,7 +19,7 @@ where $i$ is the index and $y_i$ is the original depth data before smoothing; th
 
 2\. Data fitting:
 
-A moving window with a default duration of 720 min (12 h) is applied to the smoothed depth data. Within this moving window, the SciPy CurveFit package is used to fit an exponential decay model (Equation 2), with the coefficient of determination ($R^2$) used as the goodness-of-fit metric for the regression model to the depth data. 
+A moving window with a default number of points based on the resolution—equivalent to a duration of 720 min (12 h)—is applied to the smoothed depth data.
 
 $$
 y(t) = y_0 e^{-kt}
