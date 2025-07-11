@@ -32,7 +32,7 @@ affiliations:
 date: 2025-06-19
 ---
 
-# BMP Hydrology Calculator: A Web Tool for Analyzing Rainfall, Runoff, and Infiltration in Stormwater BMPs duy
+# BMP Hydrology Calculator: A Web Tool for Analyzing Rainfall, Runoff, and Infiltration in Stormwater BMPs
 
 Edward Tiernan¹, Duy Nguyen¹, Danhui Xin¹, Nicholas Lombardo¹, Addison Torres Grant¹, Elizabeth Fassman-Beck¹
 
