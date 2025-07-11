@@ -78,7 +78,7 @@ The BMP Hydrology Calculator outputs include downloadable tables and figures. He
 
 *Table 1: Example rainfall analysis results showing unique rainfall events with intensity and dry period statistics.*
 
-| Event ID | Storm Date Time  | Total Rainfall (mm) | Avgerage Rainfall Intensity (mm/hr) | Peak 5-min Rainfall Intensity (mm/hr) | Peak 10-min Rainfall Intensity (mm/hr) | Peak 60-min Rainfall Intensity (in/hr) | Antecedent Dry Period (hr) |
+| Event ID | Storm Date Time  | Total Rainfall (mm) | Avgerage Rainfall Intensity (mm/hr) | Peak 5-min Rainfall Intensity (mm/hr) | Peak 10-min Rainfall Intensity (mm/hr) | Peak 60-min Rainfall Intensity (mm/hr) | Antecedent Dry Period (hr) |
 |:--------:|:------------:|:------------:|:------------:|:------------:|:------------:|:------------:|:------------:|
 | 1        | 2/14/1950 16:59 | 3.6 | 7.9 | 12.2 |10.7| 3.6 | NA |
 | 2        | 2/23/1950 4:22  | 54.6 | 0.8 | 15.2 |12.2 | 6.6 | 8.5 |
@@ -97,12 +97,12 @@ The BMP Hydrology Calculator outputs include downloadable tables and figures. He
 
 *Table 2: Example flow analysis results showing unique storm events with flow statistics.*
 
-| Event ID | Storm DateTime | Total Runoff Volume (ft³) | Peak Flowrate (cfs) | Runoff Duration (hr) | Inflow (ft³) | Outflow (ft³) | Bypass (ft³) |
-|:--------:|:------------:|:------------:|:------------:|:------------:|:------------:|:------------:|:------------:|
-| 1        | 2/14/1950 16:59 | 2,350                     | 1.8                 | 2.1                  | 2,350        | 2,100         | 250          |
-| 2        | 2/23/1950 4:21  | 5,800                     | 3.2                 | 4.5                  | 5,800        | 5,200         | 600          |
-| 3        | 2/27/1950 17:46 | 1,200                     | 0.9                 | 1.3                  | 1,200        | 1,100         | 100          |
-| 4        | 2/28/1950 21:56 | 4,100                     | 2.5                 | 3.2                  | 4,100        | 3,700         | 400          |
+| Type of flow | Duration of Runoff (hr) | Peak Flow Rate (L/s) | Runoff Volume (L) | 
+|:--------:|:------------:|:------------:|:------------:|
+| inflow1        | 32.83                 | 22.73                  | 34430.22        | 
+| inflow2        | 24.28                 | 36.12                  | 239978.76        |
+| bypass        | 21.57                 | 8.58                  | 19133.28        | 
+| outflow        | 28.9                 | 17.05                  | 150722.46        | 
 
 **Infiltration Analysis**: User-uploaded depth data are visualized and analyzed to determine a characteristic infiltration rate on the regression limb (i.e., when the BMP is draining after a storm). An exponential decay model, expressed as y(t) = y<sub>0</sub> e<sup>-kt</sup>, where y<sub>0</sub> is the initial depth, k is the decay constant, and t is time, is fit to the depth data using the Scipy curvefit library [@scipy_curve_fit]. The calculator identifies the best-fit window (i.e. the duration of the regression limb) and reports the infiltration rate (cm/hr)
 
