@@ -19,7 +19,7 @@ where $i$ is the index and $y_i$ is the original depth data before smoothing; th
 
 2\. Data fitting:
 
-A moving window with a default duration of 720 min (12 h) is applied to the smoothed depth data. Within this moving window, the SciPy CurveFit package is used to fit an exponential decay model (Equation 2), with the coefficient of determination ($R^2$) used as the goodness-of-fit metric for the regression model to the depth data. 
+A moving window with a default number of points based on the resolution—equivalent to a duration of 720 min (12 h)—is applied to the smoothed depth data.
 
 $$
 y(t) = y_0 e^{-kt}
@@ -35,7 +35,8 @@ The best fit is selected as the maximum $R^2$ achieved by fitting the exponentia
 
 **Note**: A high goodness-of-fit threshold is enforced ($R^2$ > 0.999) to ensure that only the regression limb is considered. If the whole timeseries has been scanned with the 12 h moving window and a suitable model cannot be found, the window size is reduced by 1 h until a suitable fit is found. The minimum window size for a regression limb is 1 h.
 
-The minimum ponded water depth must exceed 2 inches and infiltration must occur over at least one hour for the calculator to return a result.
+Infiltration must occur of at least 1-hr and the change in ponded water depth in the regression window must exceed 2-in for the calculator to return a result. A warning message will be returned by the calculator if either of these conditions are violated.
+
 
 
 <p align="center">
@@ -64,6 +65,8 @@ Equation 4
 </div>
 
 where $y_{ave}$ is the average depth within the selected time window, $y_i$ represents individual smoothed depth values within the window, and $n$ is the number of data points in the window.
+
+**Note**: A warning message will be returned if the calculated infiltration rate exceeds 150 in/hr (3810  mm/hr).
 
 SCCWRP is grateful to Matthew McGauley from Villanova University for providing
 foundational logic for the infiltration calculator.
