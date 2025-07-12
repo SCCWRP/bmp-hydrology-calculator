@@ -249,6 +249,23 @@ mod_infiltration_analysis_server <- function(id) {
             )
           df_long$datetime <- as.POSIXct(df_long$datetime, format = "%Y-%m-%d %H:%M:%S", tz = "GMT")
 
+
+          # --- NEW: depth-range check -----------------------------------------------
+          depth_range <- max(df_long$depth, na.rm = TRUE) - min(df_long$depth, na.rm = TRUE)
+          print(sheet)
+          print("depth range")
+          print(depth_range)
+
+          unit_selected <- input$depth_unit_infiltration
+          shallow_threshold <- switch(unit_selected,
+                                        "mm" = 2 * 25.4,   # 2 inches → mm
+                                        "cm" = 2 * 2.54,   # 2 inches → cm
+                                        "in" = 2,          # inches
+                                        2)                 # default fallback
+          shallow_flag <- depth_range < shallow_threshold
+          # -------------------------------------------------
+
+
           ## Process best-fit line results.
           calc_results <- result$calc_results
           best_fit_df <- data.frame(
@@ -273,7 +290,7 @@ mod_infiltration_analysis_server <- function(id) {
               }
             }
           }
-
+          print(names(best_fit_df))
           ## Prepare a table of metrics.
           metrics_list <- list()
           if (!is.null(calc_results)) {
@@ -351,7 +368,7 @@ mod_infiltration_analysis_server <- function(id) {
             )
 
           # Store the result for this sheet.
-          results_list[[sheet]] <- list(plot = p, table = metrics_df)
+          results_list[[sheet]] <- list(plot = p, table = metrics_df, best_fit_df = best_fit_df )
 
         }, error = function(e) {
           # Display an error modal if something goes wrong.
@@ -415,7 +432,7 @@ mod_infiltration_analysis_server <- function(id) {
           file,
           plot = selected_result()$plot + theme_bw(base_size = 20),
           width = 1920,
-          height = 1017,
+          height = 1441,
           units = "px",
           dpi = 93
         )
@@ -433,8 +450,10 @@ mod_infiltration_analysis_server <- function(id) {
             fg = bslib::bs_get_variables(bslib::bs_theme(preset = "cosmo"), "secondary")
           )
         )
-        ggplot2::ggsave(file, plot = selected_result()$plot + theme_bw(base_size = 20), width = 1920,
-                        height = 1017,
+        ggplot2::ggsave(file, plot = selected_result()$plot + theme_bw(base_size = 30) + theme(
+          axis.text.x = element_text(size = 25)
+        ), width = 1920,
+                        height = 1441,
                         units = "px",
                         dpi = 93)
       }
@@ -518,145 +537,228 @@ mod_infiltration_analysis_server <- function(id) {
       combined
     })
 
+    # --------------------------------------------------------------------
+    # FULL REPLACEMENT for output$table_infiltration
+    # --------------------------------------------------------------------
     output$table_infiltration <- DT::renderDT({
       req(selected_result())
       res <- selected_result()
 
+      # 1 ── Handle per-sheet error ─────────────────────────────────────
       if (!is.null(res$error)) {
-        DT::datatable(data.frame(Error = res$error))
-      } else {
-        dt <- res$table
+        return(DT::datatable(data.frame(Error = res$error)))
+      }
 
-        # Unit conversion from inches to selected unit
-        unit <- input$depth_unit_infiltration
-        threshold_in_inches <- 150
-        threshold_converted <- switch(
+      # 2 ── Base data and unit ─────────────────────────────────────────
+      dt   <- res$table            # metrics_df
+      bf   <- res$best_fit_df      # per-sheet best-fit lines
+      unit <- input$depth_unit_infiltration
+
+      # 3 ── Depth-range QA/QC per piezometer (no separate column) ─────
+      depth_range_raw <- sapply(dt$Piezometer, function(pz) {
+        vals <- bf$best_fit[bf$piezometer == pz]
+        if (length(vals) == 0) NA_real_ else diff(range(vals, na.rm = TRUE))
+      })
+
+      depth_thresh <- switch(                   # 2-inch threshold in chosen unit
+        unit, "mm" = 2 * 25.4,
+        "cm" = 2 * 2.54,
+        "in" = 2,
+        2
+      )
+
+      depth_thresh_disp <- round(depth_thresh, 2)          # threshold in chosen unit
+
+      dt$depth_qaqc <- ifelse(
+        depth_range_raw < depth_thresh,
+        paste0(
+          "Warning: Infiltration rate calculated from shallow ponding depth (",
+          "observed range = ",
+          round(depth_range_raw, 2), " ", unit, ")"
+        ),
+        ""
+      )
+
+      # 4 ── Infiltration-rate QA/QC ────────────────────────────────────
+      ir_thresh_in <- 150                               # inches hr⁻¹ baseline
+      ir_thresh <- switch(
+        unit, "mm" = ir_thresh_in * 25.4,
+        "cm" = ir_thresh_in * 2.54,
+        "in" = ir_thresh_in,
+        ir_thresh_in
+      )
+      ir_lbl <- paste0(round(ir_thresh, 1), " ", unit, "/hr")
+
+      ir_in_in <- suppressWarnings(
+        switch(
           unit,
-          "mm" = threshold_in_inches * 25.4,
-          "cm" = threshold_in_inches * 2.54,
-          "in" = threshold_in_inches,
-          threshold_in_inches  # fallback
+          "mm" = as.numeric(dt$Infiltration_rate) / 25.4,
+          "cm" = as.numeric(dt$Infiltration_rate) / 2.54,
+          "in" = as.numeric(dt$Infiltration_rate),
+          as.numeric(dt$Infiltration_rate)
         )
+      )
 
-        # Round for nicer display
-        threshold_label <- paste0(round(threshold_converted, 1), " ", unit, "/hr")
-
-        # Convert infiltration rate to inches for logic check
-        infiltration_rate_in_inches <- switch(
-          unit,
-          "mm" = dt$Infiltration_rate / 25.4,
-          "cm" = dt$Infiltration_rate / 2.54,
-          "in" = dt$Infiltration_rate,
-          dt$Infiltration_rate
+      dt$infiltration_rate_qaqc <- ifelse(
+        is.na(ir_in_in),
+        "Insufficient data",
+        ifelse(
+          ir_in_in < ir_thresh_in,
+          #paste0("Within acceptable limit (< ", ir_lbl, ")"),
+          "OK",
+          paste0("Exceeds ", ir_lbl)
         )
+      )
 
-        # Generate message column with range embedded
-        dt$message <- ifelse(
-          infiltration_rate_in_inches < threshold_in_inches,
-          paste("Infiltration rate within acceptable limit (<", threshold_label, ")"),
-          paste("Infiltration rate exceeds  ", threshold_label, ")")
-        )
+      # 5 ── Rename / arrange columns (Depth-Range column omitted) ──────
+      dt <- dt %>% dplyr::select(-Duration_hrs)   # ← hide Duration for now
 
-        # Rename columns
-        col_mapping <- c(
-          "Piezometer" = "Piezometer",
-          "Infiltration_rate" = paste("Infiltration Rate (", unit, "/hr)", sep=""),
-          "Duration_hrs" = "Duration (hr)",
-          "message" = "Message"
-        )
-        names(dt) <- sapply(names(dt), function(x) {
-          if (x %in% names(col_mapping)) col_mapping[[x]] else x
-        })
+      col_map <- c(
+        "Piezometer"             = "Piezometer",
+        "Infiltration_rate"      = paste("Infiltration Rate (", unit, "/hr)", sep = ""),
+        # "Duration_hrs"         = "Duration (hr)",   # ← commented-out
+        "infiltration_rate_qaqc" = "Infiltration Rate QAQC",
+        "depth_qaqc"             = "Depth QAQC"
+      )
+      names(dt) <- vapply(
+        names(dt),
+        function(x) if (x %in% names(col_map)) col_map[[x]] else x,
+        character(1)
+      )
 
-        # Save full message strings for color matching
-        msg_normal <- paste("Infiltration rate within acceptable limit (<", threshold_label, ")")
-        msg_warning <- paste("Infiltration rate exceeds  ", threshold_label, ")")
 
-        DT::datatable(
-          dt,
-          rownames = FALSE,
-          options = list(
-            dom = 't',
-            paging = FALSE,
-            ordering = FALSE
+      # 6 ── Render with colour cues ────────────────────────────────────
+      DT::datatable(
+        dt,
+        rownames = FALSE,
+        options  = list(dom = "t", paging = FALSE, ordering = FALSE)
+      ) %>%
+        DT::formatStyle(   # colour infiltration-rate QAQC
+          "Infiltration Rate QAQC",
+          target = "cell",
+          backgroundColor = DT::styleEqual(
+            c(
+             "OK",
+              paste0("Exceeds ",               ir_lbl),
+              "Insufficient data"
+            ),
+            c("lightgreen", "yellow", "lightgrey")
           )
         ) %>%
-          DT::formatStyle(
-            "Message",
-            target = 'cell',
-            backgroundColor = DT::styleEqual(
-              c(msg_normal, msg_warning),
-              c("lightgreen", "yellow")
-            )
+        DT::formatStyle(   # colour depth QAQC when message present
+          "Depth QAQC",
+          target = "cell",
+          backgroundColor = DT::styleEqual(
+            unique(dt$`Depth QAQC`[dt$`Depth QAQC` != ""]),
+            rep("orange", length(unique(dt$`Depth QAQC`[dt$`Depth QAQC` != ""])))
           )
-      }
+        )
     })
+    # --------------------------------------------------------------------
 
 
-    # --- Download Handler for Individual Storm Table ---
+    # Individual-storm table  ── includes sheetname
+    # ── Download: individual storm (QA code populated) ─────────────────────────
     output$download_table_infiltration <- downloadHandler(
-      filename = function() {
-        paste0("infiltration_table_", Sys.Date(), ".csv")
-      },
-      content = function(file) {
-        dt <- selected_result()$table %>%
-          # Rename the columns.
-          rename(
-            piezometer = Piezometer,
-            infiltration_rate = Infiltration_rate,
-            duration = Duration_hrs,
-            average_depth = Average_depth
-          ) %>%
-          # Add unit columns for each variable.
-          mutate(
-            infiltration_rate_unit = paste0(input$depth_unit_infiltration, "/hr"),
-            duration_unit = "hr",
-            average_depth_unit = input$depth_unit_infiltration
-          ) %>%
-          # Reorder columns so that the new unit columns follow their respective measures.
-          select(
-            piezometer,
-            infiltration_rate, infiltration_rate_unit,
-            duration, duration_unit,
-            average_depth, average_depth_unit,
-            everything()
+      filename = function() paste0("infiltration_table_", Sys.Date(), ".csv"),
+      content  = function(file) {
+
+        res  <- selected_result()                      # plot/table/best_fit_df for this sheet
+        dt   <- res$table
+        bf   <- res$best_fit_df
+        unit <- input$depth_unit_infiltration
+
+        ## ── depth-range check -------------------------------------------------
+        depth_range_raw <- sapply(dt$Piezometer, function(pz) {
+          vals <- bf$best_fit[bf$piezometer == pz]
+          if (length(vals) == 0) NA_real_ else diff(range(vals, na.rm = TRUE))
+        })
+        depth_thresh <- switch(unit, "mm" = 2*25.4, "cm" = 2*2.54, "in" = 2, 2)
+        depth_fail   <- depth_range_raw < depth_thresh | is.na(depth_range_raw)
+
+        ## ── infiltration-rate check ------------------------------------------
+        ir_thresh_in <- 150
+        ir_in_in <- suppressWarnings(as.numeric(dt$Infiltration_rate) /
+                                       switch(unit, "mm" = 25.4, "cm" = 2.54, "in" = 1, 1))
+        rate_fail  <- is.na(ir_in_in) | ir_in_in >= ir_thresh_in
+
+        ## ── derive QA code ----------------------------------------------------
+        dt$infiltrationqacode <- ifelse(
+          !depth_fail & !rate_fail, "OK",
+          ifelse(!depth_fail &  rate_fail, "H",
+                 ifelse( depth_fail & !rate_fail, "DL", "HDL"))
+        )
+
+        ## ── final export frame -----------------------------------------------
+        export <- dt %>%
+          transmute(
+            sheetname              = input$choose_rain_event_infiltration,
+            piezometer             = Piezometer,
+            infiltrationrate       = Infiltration_rate,
+            infiltrationrateunits  = paste0(unit, "/hr"),
+            infiltrationqacode
           )
 
-        readr::write_csv(dt, file)
+        readr::write_csv(export, file)
       }
     )
 
 
-    # --- Download Handler for Combined All Results Table ---
+
+
+    # Combined-results table  ── includes sheetname
     output$download_all_results_table <- downloadHandler(
-      filename = function() {
-        paste0("infiltration_table_", Sys.Date(), "_ALL.csv")
-      },
-      content = function(file) {
-        dt <- all_results_table() %>%
-          # Rename the columns.
-          rename(
-            piezometer = Piezometer,
-            infiltration_rate = Infiltration_rate,
-            duration = Duration_hrs,
-            average_depth = Average_depth
-          ) %>%
-          # Add unit columns for each variable.
-          mutate(
-            infiltration_rate_unit = paste0(input$depth_unit_infiltration, "/hr"),
-            duration_unit = "hr",
-            average_depth_unit = input$depth_unit_infiltration
-          ) %>%
-          # Reorder columns so that the new unit columns follow their respective measures.
-          select(
-            storm_name, piezometer,
-            infiltration_rate, infiltration_rate_unit,
-            duration, duration_unit,
-            average_depth, average_depth_unit,
-            everything()
+      filename = function() paste0("infiltration_table_", Sys.Date(), "_ALL.csv"),
+      content  = function(file) {
+
+        unit     <- input$depth_unit_infiltration
+        ir_thresh_in <- 150
+        depth_thresh <- switch(unit, "mm" = 2*25.4, "cm" = 2*2.54, "in" = 2, 2)
+
+        rows <- lapply(names(analysisResults()), function(sheet) {
+          res <- analysisResults()[[sheet]]
+          if (!is.null(res$error)) return(NULL)
+
+          dt <- res$table
+          bf <- res$best_fit_df
+
+          ## depth check
+          depth_range_raw <- sapply(dt$Piezometer, function(pz) {
+            vals <- bf$best_fit[bf$piezometer == pz]
+            if (length(vals) == 0) NA_real_ else diff(range(vals, na.rm = TRUE))
+          })
+          depth_fail <- depth_range_raw < depth_thresh | is.na(depth_range_raw)
+
+          ## infiltration-rate check
+          ir_in_in <- suppressWarnings(as.numeric(dt$Infiltration_rate) /
+                                         switch(unit, "mm" = 25.4, "cm" = 2.54, "in" = 1, 1))
+          rate_fail <- is.na(ir_in_in) | ir_in_in >= ir_thresh_in
+
+          ## QA code
+          qacode <- ifelse(
+            !depth_fail & !rate_fail, "OK",
+            ifelse(!depth_fail &  rate_fail, "H",
+                   ifelse( depth_fail & !rate_fail, "DL", "HDL"))
           )
-        readr::write_csv(dt, file)
+
+          dt %>%
+            transmute(
+              sheetname              = sheet,
+              piezometer             = Piezometer,
+              infiltrationrate       = Infiltration_rate,
+              infiltrationrateunits  = paste0(unit, "/hr"),
+              infiltrationqacode     = qacode
+            )
+        })
+
+        export <- dplyr::bind_rows(rows)
+        readr::write_csv(export, file)
       }
     )
+
+
+
+
+
   })
 }

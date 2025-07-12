@@ -539,8 +539,12 @@ mod_rainfall_analysis_server <- function(id) {
             )
 
           p <- create_rainfall_plot(df, selected_event)
-          ggplot2::ggsave(file, plot = p + theme_bw(base_size = 20), width = 1920,
-                          height = 1017,
+          ggplot2::ggsave(file, plot = p +
+                            theme_bw(base_size = 30) +
+                            theme(
+                              axis.text.x = element_text(size = 25)
+                            ), width = 1920,
+                          height = 1441,
                           units = "px",
                           dpi = 93)
 

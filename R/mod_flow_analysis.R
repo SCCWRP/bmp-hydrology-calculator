@@ -551,10 +551,16 @@ mod_flow_analysis_server <- function(id) {
           ggplot2::ggsave(
             file,
             plot = p +
-              scale_x_datetime(date_breaks = "1 day", date_labels = "%Y-%m-%d %H:%M") +
-              theme_bw(base_size = 20),
+              scale_x_datetime(
+                date_breaks = "2 hours",
+                date_labels = "%m/%d %H:%M"
+              ) +
+              theme_bw(base_size = 30) +
+              theme(
+                axis.text.x = element_text(angle = 90, hjust = 1, size = 25)
+              ),
             width = 1920,
-            height = 1017,
+            height = 1441,
             units = "px",
             dpi = 93
           )
