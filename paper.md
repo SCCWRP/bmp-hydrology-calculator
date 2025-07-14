@@ -66,17 +66,20 @@ On the RShiny web application, each calculator tab contains an *"Instruction"* p
 
 The BMP Hydrology Calculator outputs include downloadable tables and figures. Herein, example calculator outputs are generated using the downloadable "demo data"; each calculator has its own demo dataset and timeseries template. 
 
+
 <div style="text-align: center;">
-  <img src="https://ftp.sccwrp.org/pub/download/PROJECTS/SMC_BMP/bmp-hydrology-paper-submission/bmp-hydrology-paper-figure1.JPG" 
+  <img src="https://github.com/user-attachments/assets/63528c34-2c94-4d1a-a191-128b73b5a634" 
+       alt="Figure 1: BMP Hydrology Calculator Landing Page Header."
        width="600">
 </div>
+
 
 *Figure 1: BMP Hydrology Calculator Landing Page Header.*
 
 **Rainfall Analysis**: User-uploaded rainfall data are visualized and analyzed. Output statistics include the number of unique events in the hyetograph record, rainfall duration and depth, average and peak rainfall intensity statistics, as well as the antecedent dry periods. 
 
 <div style="text-align: center;">
-  <img src="https://ftp.sccwrp.org/pub/download/PROJECTS/SMC_BMP/bmp-hydrology-paper-submission/bmp-hydrology-paper-figure2.png" 
+  <img src="https://github.com/user-attachments/assets/110aa2c6-2be5-4e68-87d2-a1760b64b235" 
        width="600">
 </div>
 
@@ -119,7 +122,7 @@ The BMP Hydrology Calculator outputs include downloadable tables and figures. He
 **Infiltration Analysis**: User-uploaded depth data are visualized and analyzed to determine a characteristic infiltration rate on the regression limb (i.e., when the BMP is draining after a storm). An exponential decay model, expressed as y(t) = y<sub>0</sub> e<sup>-kt</sup>, where y<sub>0</sub> is the initial depth, k is the decay constant, and t is time, is fit to the depth data using the Scipy curvefit library [@scipy_curve_fit]. The calculator identifies the best-fit window (i.e. the duration of the regression limb) and reports the infiltration rate (length/time) for the draw-down event. Data from multiple sensors sharing the same timestamps can be analyzed concurrently. Data from multiple draw-down events (i.e., multiple storms) can also be submitted concurrently.
 
 <div style="text-align: center;">
-  <img src="https://ftp.sccwrp.org/pub/download/PROJECTS/SMC_BMP/bmp-hydrology-paper-submission/bmp-hydrology-paper-figure5.png" 
+  <img src="https://github.com/user-attachments/assets/5b3b366b-38bc-40de-b0e7-59412624db0f" 
        width="600">
 </div>
 
