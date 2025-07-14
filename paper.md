@@ -60,7 +60,7 @@ This web application is intended for technical users. The calculators process da
 
 ## Functionality
 
-The BMP Hydrology Calculator is built as an RShiny (version 1.10.0 [@chang2024shiny]) web application with an optional API to run the calculator locally. Three analysis tools are featured: Rainfall Analysis, Flow Analysis, and Infiltration Analysis. The Rainfall and Flow Analysis modules were programmed in R (version 4.4.1 [@r_core_2024]), while the Infiltration Analysis calculator was programmed in Python (version 3.10.11 [@python_software_foundation_2023]). 
+The BMP Hydrology Calculator is built as an RShiny (version 1.10.0 [@chang2024shiny]) web application that includes three analysis tools: Rainfall Analysis, Flow Analysis, and Infiltration Analysis. The Rainfall and Flow Analysis modules are programmed in R (version 4.4.1 [@r_core_2024]), while the Infiltration Analysis calculator was programmed in Python (version 3.10.11 [@python_software_foundation_2023]) and accessed via an API hosted on a server. The API server, available at https://nexus.sccwrp.org/bmp_hydrology, is released under the MIT license and can also be run locally.
 
 On the RShiny web application, each calculator tab contains an *"Instruction"* page with guidance on how to format user data into the bespoke, downloadable data templates, as well as a *"Method"* page detailing the underlying equations and methodological assumptions. Step-by-step instructions for uploading, labeling, identifying units, and filtering the user data are included on the left-hand side of each calculator tab. 
 
