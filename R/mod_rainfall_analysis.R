@@ -315,13 +315,16 @@ mod_rainfall_analysis_server <- function(id) {
           dplyr::mutate(
             first_rain = lubridate::as_datetime(first_rain),
             last_rain = lubridate::as_datetime(last_rain),
+            duration_hours = round(as.numeric(difftime(last_rain, first_rain, units = "hours")), 2),
             event = dplyr::row_number()
           ) %>%
           dplyr::select(
             event,
             first_rain,
             last_rain,
+            duration_hours,
             total_rainfall,
+
             avg_rainfall_intensity,
             peak_5_min_rainfall_intensity,
             peak_10_min_rainfall_intensity,
@@ -426,10 +429,12 @@ mod_rainfall_analysis_server <- function(id) {
     output$rainfall_table <- DT::renderDT({
       req(statistics())
       tryCatch({
+        print(names(statistics()))
         data <- statistics() %>%
           dplyr::select(-last_rain) %>%
           dplyr::mutate(
             first_rain = format(as.POSIXct(first_rain), format = "%Y-%m-%d %H:%M:%S"),
+            duration_hours = round(duration_hours, 2),
             total_rainfall = round(total_rainfall, 2),
             avg_rainfall_intensity = round(avg_rainfall_intensity, 2),
             peak_5_min_rainfall_intensity = round(peak_5_min_rainfall_intensity, 2),
@@ -442,6 +447,7 @@ mod_rainfall_analysis_server <- function(id) {
             dplyr::rename(
               `Event ID` = event,
               `Storm Date` = first_rain,
+              `Duration (hr)` = duration_hours,
               `Total Rainfall (mm)` = total_rainfall,
               `Average Rainfall Intensity (mm/hr)` = avg_rainfall_intensity,
               `Peak 5-min Rainfall Intensity (mm/hr)` = peak_5_min_rainfall_intensity,
@@ -452,6 +458,7 @@ mod_rainfall_analysis_server <- function(id) {
             dplyr::select(
               `Event ID`,
               `Storm Date`,
+              `Duration (hr)`,
               `Total Rainfall (mm)`,
               `Average Rainfall Intensity (mm/hr)`,
               `Peak 5-min Rainfall Intensity (mm/hr)`,
@@ -464,6 +471,7 @@ mod_rainfall_analysis_server <- function(id) {
             dplyr::rename(
               `Event ID` = event,
               `Storm Date` = first_rain,
+              `Duration (hr)` = duration_hours,
               `Total Rainfall (in)` = total_rainfall,
               `Average Rainfall Intensity (in/hr)` = avg_rainfall_intensity,
               `Peak 5-min Rainfall Intensity (in/hr)` = peak_5_min_rainfall_intensity,
@@ -474,6 +482,7 @@ mod_rainfall_analysis_server <- function(id) {
             dplyr::select(
               `Event ID`,
               `Storm Date`,
+              `Duration (hr)`,
               `Total Rainfall (in)`,
               `Average Rainfall Intensity (in/hr)`,
               `Peak 5-min Rainfall Intensity (in/hr)`,
@@ -568,6 +577,7 @@ mod_rainfall_analysis_server <- function(id) {
             dplyr::select(-last_rain) %>%
             dplyr::mutate(
               first_rain = format(as.POSIXct(first_rain), format = "%Y-%m-%d %H:%M:%S"),
+              duration_hours = round(duration_hours, 2),
               total_rainfall = round(total_rainfall, 2),
               avg_rainfall_intensity = round(avg_rainfall_intensity, 2),
               peak_5_min_rainfall_intensity = round(peak_5_min_rainfall_intensity, 2),
@@ -580,6 +590,7 @@ mod_rainfall_analysis_server <- function(id) {
               dplyr::rename(
                 `Event ID` = event,
                 `Storm Date` = first_rain,
+                `Duration (hr)` = duration_hours,
                 `Total Rainfall (mm)` = total_rainfall,
                 `Average Rainfall Intensity (mm/hr)` = avg_rainfall_intensity,
                 `Peak 5-min Rainfall Intensity (mm/hr)` = peak_5_min_rainfall_intensity,
@@ -590,6 +601,7 @@ mod_rainfall_analysis_server <- function(id) {
               dplyr::select(
                 `Event ID`,
                 `Storm Date`,
+                `Duration (hr)`,
                 `Total Rainfall (mm)`,
                 `Average Rainfall Intensity (mm/hr)`,
                 `Peak 5-min Rainfall Intensity (mm/hr)`,
@@ -602,6 +614,7 @@ mod_rainfall_analysis_server <- function(id) {
               dplyr::rename(
                 `Event ID` = event,
                 `Storm Date` = first_rain,
+                `Duration (hr)` = duration_hours,
                 `Total Rainfall (in)` = total_rainfall,
                 `Average Rainfall Intensity (in/hr)` = avg_rainfall_intensity,
                 `Peak 5-min Rainfall Intensity (in/hr)` = peak_5_min_rainfall_intensity,
@@ -612,6 +625,7 @@ mod_rainfall_analysis_server <- function(id) {
               dplyr::select(
                 `Event ID`,
                 `Storm Date`,
+                `Duration (hr)`,
                 `Total Rainfall (in)`,
                 `Average Rainfall Intensity (in/hr)`,
                 `Peak 5-min Rainfall Intensity (in/hr)`,
@@ -652,6 +666,7 @@ mod_rainfall_analysis_server <- function(id) {
               starttime = format(first_rain, "%H:%M:%S"),
               enddate = as.Date(last_rain),
               endtime = format(last_rain, "%H:%M:%S"),
+              totalduration = round(duration_hours, 2),
               totaldepth = total_rainfall,
               totaldepthunits = totaldepthunits,
               onehourpeakrate = peak_60_min_rainfall_intensity,
@@ -664,6 +679,7 @@ mod_rainfall_analysis_server <- function(id) {
               starttime,
               enddate,
               endtime,
+              totalduration,
               totaldepth,
               totaldepthunits,
               onehourpeakrate,
