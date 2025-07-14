@@ -35,8 +35,6 @@ csl: apa.csl
 header-includes:
   - \usepackage{amsmath}
   - \usepackage{amssymb}
-  - \renewcommand{\jossfooter}{This is a draft manuscript prepared for review.}
-  - \renewcommand{\jossfooterdoi}{}
 ---
 
 ## Summary
