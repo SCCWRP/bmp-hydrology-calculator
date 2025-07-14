@@ -41,9 +41,7 @@ header-includes:
 
 ## Summary
 
-$$
-y(t) = y_0 e^{-k t}
-$$
+
 
 Field-based performance studies of stormwater best managment practices (BMPs) generate large volumes of time series data from rain gauges, flow meters, and water level sensors [@davis_green_2022]. Practitioners often rely on ad hoc spreadsheets or inconsistent workflows for data reduction [@erickson_optimizing_2013]. This results in methodological variation across studies and limits reproducibility. 
 
@@ -92,7 +90,8 @@ The BMP Hydrology Calculator outputs include downloadable tables and figures. He
 
 **Flow Analysis**: User-uploaded hydrograph data are visualized and analyzed. Output statistics include the peak flowrate, the runoff duration, and the total runoff volume. The output enables the user to compare inflow and outflow statistics for BMP performance assessment. Multiple BMP configurations are digestable by the Flow Analysis calculator; the example highlighted in Figure 3 is a BMP that has two inputs, outflow, and bypass all measured.
 
-![Figure 3: Example BMP Schematic with inflow from two drainage areas (Q_{in1}, Q_{in2}), one outflow (Q_{out}), and one bypass (Q_{byp}) flowrate timeseries.](bmp-hydrology-paper-figure3.JPG)
+![Figure 3: Example BMP Schematic with inflow from two drainage areas ($Q_{in1}$, $Q_{in2}$), one outflow ($Q_{out}$), and one bypass ($Q_{byp}$) flowrate timeseries.](bmp-hydrology-paper-figure3.JPG)
+
 
 
 
