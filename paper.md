@@ -48,7 +48,7 @@ Field-based performance studies of stormwater best managment practices (BMPs) ge
 
 The BMP Hydrology Calculator provides three types of analyses:
 
-1.	**Rainfall Analysis** - Generates the cumulative rainfall depth, average rainfall intensity, rainfall duration, and the maximum rainfall intensity over multiple storm events based on a user-uploaded rainfall data (a.k.a. hyetograph).
+1.	**Rainfall Analysis** - Generates the cumulative rainfall depth, average rainfall intensity, rainfall duration, and the maximum rainfall intensity over the entire storm and specified durations (e.g., 5, 10 or 60 minutes) for multiple storm events, and antecedent dry period based on a user-uploaded rainfall data (a.k.a. hyetograph).
 
 2.	**Flow Analysis** - Calculates statistics from user-uploaded flowrate data (a.k.a. hydrographs) including total runoff volume, runoff duration, and the peak (maximum) flow rate. Multiple BMP configurations are supported, including when the BMP has monitored flow data from multiple inflows and/or bypass (a.k.a. "overflow"). 
 
