@@ -30,6 +30,8 @@ affiliations:
   - name: Southern California Coastal Water Research Project
     index: 1
 date: 2025-06-19
+bibliography: references.bib
+csl: apa.csl
 ---
 
 
