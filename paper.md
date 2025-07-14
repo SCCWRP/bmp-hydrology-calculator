@@ -32,6 +32,9 @@ affiliations:
 date: 2025-06-19
 bibliography: references.bib
 csl: apa.csl
+header-includes:
+  - \usepackage{amsmath}
+  - \usepackage{amssymb}
 ---
 
 
