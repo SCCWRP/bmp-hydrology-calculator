@@ -1,5 +1,5 @@
 ---
-# title: "BMP Hydrology Calculator: A Web Tool for Analyzing Rainfall, Runoff, and Infiltration in Stormwater BMPs"
+title: "BMP Hydrology Calculator: A Web Tool for Analyzing Rainfall, Runoff, and Infiltration in Stormwater BMPs"
 tags:
   - hydrology
   - stormwater
@@ -21,7 +21,7 @@ authors:
     orcid: 0009-0000-2898-2577
     affiliation: 1 
   - name: Addison Torres Grant
-    orcid:
+    orcid: ""  # left blank explicitly
     affiliation: 1
   - name: Elizabeth Fassman-Beck
     orcid: 0000-0001-7594-8881
@@ -31,6 +31,7 @@ affiliations:
     index: 1
 date: 2025-06-19
 ---
+
 
 # BMP Hydrology Calculator: A Web Tool for Analyzing Rainfall, Runoff, and Infiltration in Stormwater BMPs
 
