@@ -40,7 +40,7 @@ Infiltration must occur of at least 1-hr and the change in ponded water depth in
 
 
 <p align="center">
-  <img src="https://github.com/user-attachments/assets/86a6f365-ed3a-4f40-a553-d76a8a77e64b"
+  <img src="https://ftp.sccwrp.org/pub/download/PROJECTS/SMC_BMP/bmp-hydrology-paper-submission/bmp-hydrology-paper-figure5.png"
        style="max-width: 900px; max-height: 600px; height: auto; width: auto;">
 </p>
 
