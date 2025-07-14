@@ -9,3 +9,5 @@ inst/doc
 /Meta/
 rsconnect/
 vignettes/
+.vscode/
+
