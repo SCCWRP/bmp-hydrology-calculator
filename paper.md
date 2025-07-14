@@ -99,12 +99,12 @@ The BMP Hydrology Calculator outputs include downloadable tables and figures. He
 
 *Table 2: Example flow analysis results showing unique storm events with flow statistics.*
 
-| Type of flow | Duration of Runoff (hr) | Peak Flow Rate (L/s) | Runoff Volume (L) | 
+| Type of flow | Duration of Runoff (hr) | Runoff Volume (L) | Peak Flow Rate (L/s) | 
 |:--------:|:------------:|:------------:|:------------:|
-| inflow1        | 32.83                 | 22.73                  | 34430.22        | 
-| inflow2        | 24.28                 | 36.12                  | 239978.76        |
-| bypass        | 21.57                 | 8.58                  | 19133.28        | 
-| outflow        | 28.9                 | 17.05                  | 150722.46        | 
+| inflow1        | 32.83                 | 34430.22        | 22.73                  | 
+| inflow2        | 24.28                 |239978.76        | 36.12                  | 
+| bypass        | 21.57                 | 19133.28        | 8.58                  | 
+| outflow        | 28.9                 | 150722.46        | 17.05                  | 
 
 **Infiltration Analysis**: User-uploaded depth data are visualized and analyzed to determine a characteristic infiltration rate on the regression limb (i.e., when the BMP is draining after a storm). An exponential decay model, expressed as y(t) = y<sub>0</sub> e<sup>-kt</sup>, where y<sub>0</sub> is the initial depth, k is the decay constant, and t is time, is fit to the depth data using the Scipy curvefit library [@scipy_curve_fit]. The calculator identifies the best-fit window (i.e. the duration of the regression limb) and reports the infiltration rate (length/time) for the draw-down event. Data from multiple sensors sharing the same timestamps can be analyzed concurrently. Data from multiple draw-down events (i.e., multiple storms) can also be submitted concurrently.
 
