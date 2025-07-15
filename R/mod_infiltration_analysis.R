@@ -181,12 +181,21 @@ mod_infiltration_analysis_server <- function(id) {
       )
 
       # Pop up a "Calculating" modal.
-      showModal(modalDialog(
-        title = "Calculating",
-        "Please wait while we process the data. This might take a few minutes depending on your data size...",
-        footer = NULL,
-        easyClose = FALSE
-      ))
+      showModal(
+        modalDialog(
+          title = "Calculating",
+          tagList(
+            p("Please wait while we process the data. This might take a few minutes depending on your data size and the complexity of the algorithm."),
+            p("If the computation takes too long, your browser may time out. When this happens, the app will return with no error message but no result and no plot."),
+            p("If this happens, and your file contains many sensor columns, please try splitting the file into smaller parts by including fewer sensor columns per file, and submitting them one at a time to reduce processing time."),
+            p("Thank you for your patience while we process your data.")
+          ),
+          footer = NULL,
+          easyClose = FALSE
+        )
+      )
+
+
 
       valid_data <- validatedData()
       results_list <- list()
@@ -196,6 +205,8 @@ mod_infiltration_analysis_server <- function(id) {
         tryCatch({
           data_df <- valid_data[[sheet]]
           df <- data_df
+
+
           df$datetime <- as.character(as.POSIXct(df$datetime, tz = "UTC"))
 
           # Use constants from the UI.
@@ -229,6 +240,8 @@ mod_infiltration_analysis_server <- function(id) {
           local_df <- jsonlite::fromJSON(jsonlite::toJSON(result$dataframe), flatten = TRUE)
           local_df$datetime <- as.POSIXct(as.character(local_df$datetime), format = "%Y-%m-%dT%H:%M:%S")
           local_df$datetime <- format(local_df$datetime, "%Y-%m-%d %H:%M:%S")
+
+
           names(local_df) <- sub("\\..*$", "", names(local_df))
 
           # Convert columns starting with "smooth_" to numeric.
@@ -252,9 +265,6 @@ mod_infiltration_analysis_server <- function(id) {
 
           # --- NEW: depth-range check -----------------------------------------------
           depth_range <- max(df_long$depth, na.rm = TRUE) - min(df_long$depth, na.rm = TRUE)
-          print(sheet)
-          print("depth range")
-          print(depth_range)
 
           unit_selected <- input$depth_unit_infiltration
           shallow_threshold <- switch(unit_selected,
@@ -290,7 +300,7 @@ mod_infiltration_analysis_server <- function(id) {
               }
             }
           }
-          print(names(best_fit_df))
+
           ## Prepare a table of metrics.
           metrics_list <- list()
           if (!is.null(calc_results)) {

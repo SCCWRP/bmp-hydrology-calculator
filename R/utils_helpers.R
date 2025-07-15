@@ -156,7 +156,11 @@ validate_infiltration_file <- function(file_path) {
 
     # Coerce to character in case it's not
     datetime_vals <- as.character(data_df$datetime)
-
+    datetime_vals <- ifelse(
+      grepl("^\\d{4}-\\d{2}-\\d{2}$", datetime_vals),
+      paste0(datetime_vals, " 00:00:00"),
+      datetime_vals
+    )
     # Check for missing values in datetime column
     if (any(is.na(datetime_vals) | trimws(datetime_vals) == "")) {
       errors <- c(errors, paste("Sheet", sheet, ": 'datetime' column has missing or blank values."))
