@@ -77,7 +77,7 @@ The BMP Hydrology Calculator outputs include downloadable tables and figures. He
 
 *Table 1: Example rainfall analysis results showing unique rainfall events with intensity and dry period statistics.*
 
-| Event ID | Storm Date Time  | Duration (hr)  | Total Rainfall (mm) | Avgerage Rainfall Intensity (mm/hr) | Peak 5-min Rainfall Intensity (mm/hr) | Peak 10-min Rainfall Intensity (mm/hr) | Peak 60-min Rainfall Intensity (mm/hr) | Antecedent Dry Period (hr) |
+| Event ID | Storm Date Time  | Duration (hr)  | Total Rainfall (mm) | Avgerage Rainfall Intensity (mm/hr) | Peak 5-min Rainfall Intensity (mm/hr) | Peak 10-min Rainfall Intensity (mm/hr) | Peak 60-min Rainfall Intensity (mm/hr) | Antecedent Dry Period (days) |
 |:--------:|:------------:|:------------:|:------------:|:------------:|:------------:|:------------:|:------------:|:------------:|
 | 1        | 2/14/1950 16:59 | 0.45 | 3.56 | 7.9 | 12.19 |10.67| 3.56 | NA |
 | 2        | 2/23/1950 4:22  | 68.65 | 54.61 | 0.8 | 15.24 |12.19 | 6.6 | 8.46 |
