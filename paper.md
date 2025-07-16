@@ -45,7 +45,7 @@ Field-based performance studies of stormwater best managment practices (BMPs) ge
 
 **Statement of Need:** The BMP Hydrology Calculator fills this gap by providing a centralized, open-source platform for applying standard hydrologic post-processing techniques in a consistent and automated manner. This web application has been developed to enable consistent, transparent, and easily applied calculations of rainfall, flow, and infiltration for stormwater BMP monitoring studies.
 
-The BMP Hydrology Calculator provides three types of analyses :
+The BMP Hydrology Calculator provides three types of analyses:
 
 1.	**Rainfall Analysis** - Generates the cumulative rainfall duration, rainfall depth, average rainfall intensity, and the maximum rainfall intensity over the entire storm and specified durations (e.g., 5, 10 or 60 minutes) for multiple storm events, and antecedent dry period based on a user-uploaded rainfall data (a.k.a. hyetograph).
 
