@@ -38,9 +38,8 @@ The best fit is selected as $R^2$ > 0.999 achieved by fitting the exponential de
 Infiltration must occur of at least 1-hr and the change in ponded water depth in the regression window must exceed 2-in for the calculator to return a result. A warning message will be returned by the calculator if either of these conditions are violated.
 
 
-
 <p align="center">
-  <img src="https://github.com/user-attachments/assets/e7dacb8c-879c-4ff4-b77c-5009aa681e5e" />
+  <img src="https://github.com/user-attachments/assets/e7dacb8c-879c-4ff4-b77c-5009aa681e5e"  width = "600" />
 </p>
 
 
