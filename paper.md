@@ -113,12 +113,11 @@ The BMP Hydrology Calculator outputs include downloadable tables and figures. He
 
 
 
-*Table 3: Example infiltration analysis results showing unique storm events with infiltration rates.*
+*Table 3: Example infiltration analysis results showing a unique storm event with its corresponding infiltration rate.*
 
 | Piezometer | Infiltration Rate (mm/hr) | 
 |:--------:|:------------:|
-| Piez A | 0.24 | 
-| Piez B | 0.12 | 
+| Piezometer A | 1421.94 | 
 
 
 ## Acknowledgements
