@@ -30,7 +30,7 @@ affiliations:
   - name: Southern California Coastal Water Research Project
     index: 1
 date: 2025-06-19
-bibliography: references.bib
+bibliography: paper.bib
 csl: apa.csl
 header-includes:
   - \usepackage{amsmath}
