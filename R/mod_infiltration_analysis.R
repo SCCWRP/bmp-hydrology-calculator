@@ -581,12 +581,9 @@ mod_infiltration_analysis_server <- function(id) {
 
       dt$depth_qaqc <- ifelse(
         depth_range_raw < depth_thresh,
-        paste0(
-          "Warning: Infiltration rate calculated from shallow ponding depth (",
-          "observed range = ",
-          round(depth_range_raw, 2), " ", unit, ")"
-        ),
-        ""
+        paste0("Warning: Infiltration rate calculated from shallow ponding depth (observed range = ",
+               round(depth_range_raw, 2), " ", unit, ")"),
+        "OK"
       )
 
       # 4 ── Infiltration-rate QA/QC ────────────────────────────────────
@@ -638,31 +635,35 @@ mod_infiltration_analysis_server <- function(id) {
 
 
       # 6 ── Render with colour cues ────────────────────────────────────
+      depth_values <- unique(dt$`Depth QAQC`)
+      depth_colors <- ifelse(
+        depth_values == "OK",
+        "lightgreen",   # OK → green
+        "yellow"        # warnings → orange
+      )
+
       DT::datatable(
         dt,
         rownames = FALSE,
         options  = list(dom = "t", paging = FALSE, ordering = FALSE)
       ) %>%
-        DT::formatStyle(   # colour infiltration-rate QAQC
+        DT::formatStyle(
           "Infiltration Rate QAQC",
           target = "cell",
           backgroundColor = DT::styleEqual(
-            c(
-             "OK",
-              paste0("Exceeds ",               ir_lbl),
-              "Insufficient data"
-            ),
+            c("OK", paste0("Exceeds ", ir_lbl), "Insufficient data"),
             c("lightgreen", "yellow", "lightgrey")
           )
         ) %>%
-        DT::formatStyle(   # colour depth QAQC when message present
+        DT::formatStyle(
           "Depth QAQC",
           target = "cell",
           backgroundColor = DT::styleEqual(
-            unique(dt$`Depth QAQC`[dt$`Depth QAQC` != ""]),
-            rep("orange", length(unique(dt$`Depth QAQC`[dt$`Depth QAQC` != ""])))
+            depth_values,
+            depth_colors
           )
         )
+
     })
     # --------------------------------------------------------------------
 
