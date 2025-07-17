@@ -127,14 +127,20 @@ mod_flow_analysis_server <- function(id) {
 
     # Create a flow plot based on filtered data.
     create_flow_plot <- function(df) {
-      df$flow_type <- factor(df$flow_type, levels = c("inflow1", "inflow2", "bypass", "outflow"))
+      # Factor with desired display names
+      df$flow_type <- factor(
+        df$flow_type,
+        levels = c("inflow1", "inflow2", "bypass", "outflow"),
+        labels = c("Inflow 1", "Inflow 2", "Bypass", "Outflow")
+      )
 
       ggplot2::ggplot(df, ggplot2::aes(x = datetime, y = flow, colour = flow_type)) +
         ggplot2::geom_line(size = 1.5) +
         ggplot2::labs(
           x = "Datetime",
           y = paste("Flow rate (", input$flow_units_flow, ")", sep = ""),
-          title = input$graph_title_flow
+          title = input$graph_title_flow,
+          colour = "Flow Type" # set legend title here
         ) +
         ggplot2::scale_x_datetime(
           date_breaks = "2 hours",
@@ -144,6 +150,7 @@ mod_flow_analysis_server <- function(id) {
           axis.text.x = ggplot2::element_text(angle = 90, hjust = 1)
         )
     }
+
 
     # Initialize a reactive flag to track result generation
     result_generated <- reactiveVal(FALSE)

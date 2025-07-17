@@ -20,6 +20,8 @@ To use the Infiltration Analysis calculator, ponding depth data should be copied
 - Download infiltration demo data
 - Download infiltration template
 
+**Note**: The demonstration data file includes field monitoring data from two different BMPs for the purposes of demonstrating data formatting and calculator functionality. Users should not make any inferences based on these specific data sets.
+
 **Data Requirements:**
 The data sheet contains at least 2 worksheets: instructions and an additional worksheet for each individual infiltration event. The uploaded Excel spreadsheet must conform to the following requirements:
 1. Timestamps should be in 24-hour format (mm/dd/yy hh:mm:ss).

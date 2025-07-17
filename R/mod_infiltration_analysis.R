@@ -339,10 +339,12 @@ mod_infiltration_analysis_server <- function(id) {
           }
 
           # Create base plot
+          df_long$piezometer <- gsub("_", " ", df_long$piezometer)
+
           p <- ggplot2::ggplot() +
             ggplot2::geom_line(
               data = df_long,
-              ggplot2::aes(x = datetime, y = depth, color = paste("Original data", piezometer)),
+              ggplot2::aes(x = datetime, y = depth, color = paste("Original Data", piezometer)),
               size = 1.5
             )
 
