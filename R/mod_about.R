@@ -46,7 +46,7 @@ mod_about_ui <- function(id) {
     ),
     shinyWidgets::actionBttn(
       "feedback",
-      "Feedback Form",
+      "Feedback Form - Rainfall and Flow Analysis",
       onclick ="window.open('https://forms.office.com/Pages/ResponsePage.aspx?id=PfKopOEaHEuZAuqhUwKBkLfF7RbFiCdKlqnmjECrBFxUMTBTVFpTSlcxM1VJSkM3NUdQQTdBSU5ENi4u', '_blank')"
     ),
     shinyWidgets::actionBttn(
