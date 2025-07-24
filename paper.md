@@ -43,7 +43,8 @@ header-includes:
 
 Field-based performance studies of stormwater best managment practices (BMPs) generate large volumes of time series data from rain gauges, flow meters, and water level sensors [@davis_green_2022]. Practitioners often rely on ad hoc spreadsheets or inconsistent workflows for data reduction [@erickson_optimizing_2013]. This results in methodological variation across studies and limits reproducibility. 
 
-**Statement of Need:** The BMP Hydrology Calculator fills this gap by providing a centralized, open-source platform for applying standard hydrologic post-processing techniques in a consistent and automated manner. This web application has been developed to enable consistent, transparent, and easily applied calculations of rainfall, flow, and infiltration for stormwater BMP monitoring studies.
+## Statement of Need
+The BMP Hydrology Calculator fills this gap by providing a centralized, open-source platform for applying standard hydrologic post-processing techniques in a consistent and automated manner. This web application has been developed to enable consistent, transparent, and easily applied calculations of rainfall, flow, and infiltration for stormwater BMP monitoring studies.
 
 The BMP Hydrology Calculator provides three types of analyses:
 
