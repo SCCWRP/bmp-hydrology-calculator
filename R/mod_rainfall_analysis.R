@@ -278,7 +278,7 @@ mod_rainfall_analysis_server <- function(id) {
     response <- eventReactive(input$submit_rainfall, {
       req(payload())
       tryCatch({
-        showModal(modalDialog("Calculating...", footer = NULL))
+
         res <- httr::POST(
           "https://nexus.sccwrp.org/bmp_hydrology/api/rain",
           body = payload(),
