@@ -15,6 +15,8 @@ Equation 1
 
 where $i$ is the index and $y_i$ is the original depth data before smoothing; the time between $y_{i-j}$ and $y_{i+j}$ is the smoothing window, which is set to 15 min by default (i.e., $t_{i+j}$ - $t_{i+j}$ = 15 min); $\tilde{y_i}$ represents the smoothed depth data.
 
+In order to appropriately reflect the expected rapid rate of water movement through a BMP in the calculated infiltration rate, water level data are expected to be collected at frequent intervals, arbitrarily set here to less than 15-min.
+
 **Note**: the smoothing window is based on a fixed duration of 15 min, rather than a fixed number of data points, e.g., when the depth data are in 3-minute increments (instead of 1-minute), $y_i$ is the median of 5 points (instead of 15).
 
 2\. Data fitting:
