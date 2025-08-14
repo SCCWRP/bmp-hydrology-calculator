@@ -165,6 +165,9 @@ mod_infiltration_analysis_server <- function(id) {
               )
             ),
             bslib::card(
+              bslib::card_header(
+                actionButton(ns("readme_btn"), "README", class = "btn-info btn-sm")
+              ),
               bslib::card_body(
                 DT::dataTableOutput(ns("table_infiltration"))
               ),
@@ -406,6 +409,31 @@ mod_infiltration_analysis_server <- function(id) {
 
       removeModal()  # Remove the "Calculating" modal.
 
+    })
+
+    # README button modal
+    observeEvent(input$readme_btn, {
+      showModal(
+        modalDialog(
+          title = "QAQC Explanation",
+          size = "l",
+          HTML(
+            "<p>Users are notified in the Results table if the infiltration rate was determined by the
+            regression algorithm over a short duration of time (1 hr) and/or over a small change in
+            depth (< 2 inches in water level decrease). If this occurs, it is likely because of the
+            criteria seeking a tight regression fit (R² > 0.9). App developers recognize that a small
+            change in ponded water level or short duration of infiltration is atypical of expectations
+            for BMP operation.</p>
+
+            <p>Users are also notified if a very high infiltration rate is calculated (> 150 in/hr)
+            compared to typical design expectations.</p>
+
+            <p>Use of the information is at the discretion of the user.</p>"
+          ),
+          footer = modalButton("Close"),
+          easyClose = TRUE
+        )
+      )
     })
 
     # Reactive expression to get the selected sheet's analysis result.

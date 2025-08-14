@@ -168,22 +168,52 @@ validate_infiltration_file <- function(file_path) {
 
     # Try parsing datetime with tryCatch to prevent crashes
     parsed_time <- tryCatch({
-      suppressWarnings(as.POSIXct(datetime_vals, tz = "UTC",
+
+      as.POSIXct(datetime_vals, tz = "UTC",
                                   tryFormats = c("%Y-%m-%d %H:%M:%S",
                                                  "%Y-%m-%d",
                                                  "%m/%d/%Y %H:%M",
-                                                 "%m/%d/%Y")))
+                                                 "%m/%d/%Y"))
     }, error = function(e) {
+      print(e)
       rep(NA, length(datetime_vals))
     })
 
     # If parsing failed entirely, return error and skip further validation
     if (all(is.na(parsed_time))) {
-      errors <- c(errors, paste("Sheet", sheet, ": 'datetime' column is not in a recognizable datetime format. Make sure to check ALL values, the format is mm/dd/yy"))
+      errors <- c(errors, paste("Sheet", sheet, ": 'datetime' column is not in a recognizable datetime format. Make sure to check ALL values, the format is mm/dd/yy hh:mm:ss"))
       error_report[[sheet]] <- errors
       next
     } else {
       data_df$datetime <- parsed_time
+    }
+
+    # Check for time gaps greater than 15 minutes
+    if (length(parsed_time) > 1 && !all(is.na(parsed_time))) {
+      # Remove NA values for time gap check, but keep track of original indices
+      non_na_indices <- which(!is.na(parsed_time))
+      valid_times <- parsed_time[non_na_indices]
+      if (length(valid_times) > 1) {
+        # Sort times and keep track of original order
+        time_order <- order(valid_times)
+        sorted_times <- valid_times[time_order]
+        sorted_indices <- non_na_indices[time_order]
+
+        # Calculate time differences in minutes
+        time_diffs <- as.numeric(diff(sorted_times), units = "mins")
+        # Check if any gap exceeds 15 minutes
+        if (any(time_diffs > 15, na.rm = TRUE)) {
+          max_gap <- max(time_diffs, na.rm = TRUE)
+          gap_index <- which.max(time_diffs)
+          # Add 1 for header row to get actual Excel row numbers
+          actual_row1 <- sorted_indices[gap_index] + 1
+          actual_row2 <- sorted_indices[gap_index + 1] + 1
+          errors <- c(errors, paste("Sheet", sheet, ": Missing data detected - time gap of",
+                                   round(max_gap, 2), "minutes found between rows",
+                                   actual_row1, "and", actual_row2,
+                                   "(maximum allowed gap is 15 minutes)."))
+        }
+      }
     }
 
     # Check for duplicate column names
