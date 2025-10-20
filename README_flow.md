@@ -28,6 +28,7 @@ Hydrologic mitigation or alteration provided by BMPs is often reported as the pe
 </p>
 
 $$\text{Figure 1. Typical, simple BMP hydrologic measurement scenario.}$$
+$$ \text{percent change} = \frac{\text{(Inflow value-Outflow value)}}{\text{(Inflow value)}} × 100% $$
 <div align="right"> 
 Equation 3
 </div>
