@@ -132,13 +132,82 @@ validate_flow_file <- function(file_path) {
 
 # Helper function: Validate the infiltration file and return a list of error messages.
 validate_infiltration_file <- function(file_path) {
+  excel_serial_to_posix <- function(x) {
+    as.POSIXct(
+      round(as.numeric(x) * 86400),
+      origin = "1899-12-30",
+      tz = "UTC"
+    )
+  }
+
+  parse_infiltration_datetime <- function(datetime_col) {
+    if (inherits(datetime_col, "POSIXt")) {
+      return(as.POSIXct(datetime_col, tz = "UTC"))
+    }
+
+    if (inherits(datetime_col, "Date")) {
+      return(as.POSIXct(datetime_col, tz = "UTC"))
+    }
+
+    if (is.numeric(datetime_col)) {
+      return(excel_serial_to_posix(datetime_col))
+    }
+
+    datetime_vals <- trimws(as.character(datetime_col))
+    nonbreaking_spaces <- paste0("[", intToUtf8(c(160, 8239)), "]")
+    datetime_vals <- gsub(nonbreaking_spaces, " ", datetime_vals)
+    datetime_vals <- gsub("[[:space:]]+", " ", datetime_vals)
+
+    numeric_vals <- suppressWarnings(as.numeric(datetime_vals))
+    nonblank_vals <- !is.na(datetime_vals) & datetime_vals != ""
+    if (any(!is.na(numeric_vals)) &&
+        all(!nonblank_vals | !is.na(numeric_vals))) {
+      return(excel_serial_to_posix(numeric_vals))
+    }
+
+    as.POSIXct(
+      datetime_vals,
+      tz = "UTC",
+      tryFormats = c(
+        "%Y-%m-%d %H:%M:%S",
+        "%Y-%m-%d %H:%M",
+        "%Y-%m-%dT%H:%M:%SZ",
+        "%Y-%m-%dT%H:%M:%S",
+        "%Y-%m-%d",
+        "%m/%d/%Y %H:%M:%S",
+        "%m/%d/%Y %H:%M",
+        "%m/%d/%Y",
+        "%m/%d/%y %H:%M:%S",
+        "%m/%d/%y %H:%M",
+        "%m/%d/%y"
+      )
+    )
+  }
+
   sheets <- readxl::excel_sheets(file_path)
   sheets <- sheets[!sheets %in% "Instructions"]
   error_report <- list()
   valid_data <- list()
 
   for (sheet in sheets) {
-    data_df <- readxl::read_excel(file_path, sheet = sheet, .name_repair = "minimal")
+    col_names_preview <- names(readxl::read_excel(file_path, sheet = sheet,
+                                                   .name_repair = "minimal",
+                                                   n_max = 0))
+    data_df <- readxl::read_excel(file_path, sheet = sheet,
+                                   .name_repair = "minimal")
+
+    if ("datetime" %in% col_names_preview) {
+      col_types_vec <- ifelse(col_names_preview == "datetime", "numeric", "guess")
+      numeric_datetime_df <- suppressWarnings(
+        readxl::read_excel(file_path, sheet = sheet,
+                           .name_repair = "minimal",
+                           col_types = col_types_vec)
+      )
+      if (is.numeric(numeric_datetime_df$datetime) &&
+          any(!is.na(numeric_datetime_df$datetime))) {
+        data_df$datetime <- numeric_datetime_df$datetime
+      }
+    }
     errors <- c()
 
     if (nrow(data_df) > 45000) {
@@ -154,29 +223,17 @@ validate_infiltration_file <- function(file_path) {
       next
     }
 
-    # Coerce to character in case it's not
-    datetime_vals <- as.character(data_df$datetime)
-    datetime_vals <- ifelse(
-      grepl("^\\d{4}-\\d{2}-\\d{2}$", datetime_vals),
-      paste0(datetime_vals, " 00:00:00"),
-      datetime_vals
-    )
     # Check for missing values in datetime column
-    if (any(is.na(datetime_vals) | trimws(datetime_vals) == "")) {
+    if (any(is.na(data_df$datetime) | trimws(as.character(data_df$datetime)) == "")) {
       errors <- c(errors, paste("Sheet", sheet, ": 'datetime' column has missing or blank values."))
     }
 
     # Try parsing datetime with tryCatch to prevent crashes
     parsed_time <- tryCatch({
-
-      as.POSIXct(datetime_vals, tz = "UTC",
-                                  tryFormats = c("%Y-%m-%d %H:%M:%S",
-                                                 "%Y-%m-%d",
-                                                 "%m/%d/%Y %H:%M",
-                                                 "%m/%d/%Y"))
+      parse_infiltration_datetime(data_df$datetime)
     }, error = function(e) {
       print(e)
-      rep(NA, length(datetime_vals))
+      rep(NA, length(data_df$datetime))
     })
 
     # If parsing failed entirely, return error and skip further validation
@@ -186,6 +243,17 @@ validate_infiltration_file <- function(file_path) {
       next
     } else {
       data_df$datetime <- parsed_time
+    }
+
+    clock_times <- unique(format(parsed_time, "%H:%M:%S", tz = "UTC"))
+    if (length(clock_times) == 1 &&
+        identical(clock_times, "00:00:00") &&
+        nrow(data_df) > 1) {
+      errors <- c(errors, paste(
+        "Sheet", sheet,
+        ": The 'datetime' column was read as date-only with no time component.",
+        "Check that the Excel cell values themselves include time, not just the displayed format."
+      ))
     }
 
     # Check for time gaps greater than 15 minutes

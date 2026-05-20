@@ -24,49 +24,61 @@ mod_infiltration_analysis_ui <- function(id) {
       multiple = FALSE,
       accept = ".xlsx"
     ) |>
-      bslib::as_fillable_container(style = "overflow-y:auto", max_height = "200px"),
+      bslib::as_fillable_container(
+        style = "overflow-y:auto",
+        max_height = "200px"
+      ),
     bslib::tooltip(
-      span(strong("Step 2: Validate data"), bsicons::bs_icon("question-circle")),
-      "Data must be validated before proceeding."),
+      span(
+        strong("Step 2: Validate data"),
+        bsicons::bs_icon("question-circle")
+      ),
+      "Data must be validated before proceeding."
+    ),
     shinyjs::disabled(
       shinyWidgets::actionBttn(ns("validate_infiltration"), "Validate data")
     ),
     bslib::tooltip(
-      span(strong("Step 3: Select depth's unit of the data"), bsicons::bs_icon("question-circle")),
+      span(
+        strong("Step 3: Select depth's unit of the data"),
+        bsicons::bs_icon("question-circle")
+      ),
       "Note that the rate will be <your-unit>/hr"
     ),
     shinyjs::disabled(
       selectInput(
-       ns("depth_unit_infiltration"),
-       "Depth Unit",
-       choices = c("mm", "cm", "in"),
-       label = NULL
+        ns("depth_unit_infiltration"),
+        "Depth Unit",
+        choices = c("mm", "cm", "in"),
+        label = NULL
       )
     ),
     bslib::tooltip(
       span(strong("Step 4: Submit data"), bsicons::bs_icon("question-circle")),
       "Submit data when validation is successful."
     ),
-    shinyjs::disabled(shinyWidgets::actionBttn(ns("submit_infiltration"), "Submit")),
+    shinyjs::disabled(shinyWidgets::actionBttn(
+      ns("submit_infiltration"),
+      "Submit"
+    )),
   )
 
   main_panel <- bslib::navset_card_underline(
-      id = ns("main_infiltration"),
-      bslib::nav_panel(
-        title = "Instruction",
-        mod_infiltration_instruction_ui("infiltration_instruction")
-      ),
-      bslib::nav_panel(
-        title = "Method",
-        mod_infiltration_method_ui("infiltration_method")
-      )
+    id = ns("main_infiltration"),
+    bslib::nav_panel(
+      title = "Instruction",
+      mod_infiltration_instruction_ui("infiltration_instruction")
+    ),
+    bslib::nav_panel(
+      title = "Method",
+      mod_infiltration_method_ui("infiltration_method")
     )
+  )
 
   bslib::page_sidebar(
     sidebar = sidebar,
     main_panel
   )
-
 }
 
 #' infiltration_analysis Server Functions
@@ -82,6 +94,128 @@ mod_infiltration_analysis_server <- function(id) {
     # Reactive values to store validated data and analysis results (dictionary keyed by sheet names)
     validatedData <- reactiveVal(NULL)
     analysisResults <- reactiveVal(NULL)
+
+    excel_serial_to_posix <- function(x) {
+      as.POSIXct(
+        round(as.numeric(x) * 86400),
+        origin = "1899-12-30",
+        tz = "UTC"
+      )
+    }
+
+    parse_infiltration_datetime <- function(datetime_col) {
+      if (inherits(datetime_col, "POSIXt")) {
+        return(as.POSIXct(datetime_col, tz = "UTC"))
+      }
+
+      if (inherits(datetime_col, "Date")) {
+        return(as.POSIXct(datetime_col, tz = "UTC"))
+      }
+
+      if (is.numeric(datetime_col)) {
+        return(excel_serial_to_posix(datetime_col))
+      }
+
+      datetime_vals <- trimws(as.character(datetime_col))
+      nonbreaking_spaces <- paste0("[", intToUtf8(c(160, 8239)), "]")
+      datetime_vals <- gsub(nonbreaking_spaces, " ", datetime_vals)
+      datetime_vals <- gsub("[[:space:]]+", " ", datetime_vals)
+      numeric_vals <- suppressWarnings(as.numeric(datetime_vals))
+      nonblank_vals <- !is.na(datetime_vals) & datetime_vals != ""
+      if (any(!is.na(numeric_vals)) &&
+          all(!nonblank_vals | !is.na(numeric_vals))) {
+        return(excel_serial_to_posix(numeric_vals))
+      }
+
+      formats <- c(
+        "%Y-%m-%d %H:%M:%OS",
+        "%Y-%m-%d %H:%M",
+        "%Y-%m-%dT%H:%M:%OSZ",
+        "%Y-%m-%dT%H:%M:%OS",
+        "%Y-%m-%d",
+        "%m/%d/%Y %H:%M:%OS",
+        "%m/%d/%Y %H:%M",
+        "%m/%d/%Y",
+        "%m/%d/%y %H:%M:%OS",
+        "%m/%d/%y %H:%M",
+        "%m/%d/%y"
+      )
+      parsed <- as.POSIXct(rep(NA_real_, length(datetime_vals)),
+                           origin = "1970-01-01",
+                           tz = "UTC")
+
+      for (fmt in formats) {
+        needs_parse <- is.na(parsed) & nonblank_vals
+        if (!any(needs_parse)) {
+          break
+        }
+
+        candidates <- as.POSIXct(strptime(
+          datetime_vals[needs_parse],
+          format = fmt,
+          tz = "UTC"
+        ))
+        matched <- !is.na(candidates)
+        parsed[which(needs_parse)[matched]] <- candidates[matched]
+      }
+
+      parsed
+    }
+
+    has_time_component <- function(datetime_col) {
+      parsed <- parse_infiltration_datetime(datetime_col)
+      any(!is.na(parsed) & format(parsed, "%H:%M:%S", tz = "UTC") != "00:00:00")
+    }
+
+    read_uploaded_infiltration_datetime <- function(file_path, sheet) {
+      col_names <- names(readxl::read_excel(
+        file_path,
+        sheet = sheet,
+        .name_repair = "minimal",
+        n_max = 0
+      ))
+
+      if (!"datetime" %in% col_names) {
+        return(NULL)
+      }
+
+      col_types <- ifelse(col_names == "datetime", "numeric", "skip")
+      raw_datetime_df <- suppressWarnings(readxl::read_excel(
+        file_path,
+        sheet = sheet,
+        .name_repair = "minimal",
+        col_types = col_types
+      ))
+
+      raw_datetime <- NULL
+      if (is.numeric(raw_datetime_df$datetime) &&
+          any(!is.na(raw_datetime_df$datetime))) {
+        raw_datetime <- excel_serial_to_posix(raw_datetime_df$datetime)
+      }
+
+      col_types <- ifelse(col_names == "datetime", "text", "skip")
+      text_datetime_df <- suppressWarnings(readxl::read_excel(
+        file_path,
+        sheet = sheet,
+        .name_repair = "minimal",
+        col_types = col_types
+      ))
+      text_datetime <- parse_infiltration_datetime(text_datetime_df$datetime)
+
+      if (has_time_component(text_datetime)) {
+        return(text_datetime)
+      }
+
+      if (!is.null(raw_datetime) && has_time_component(raw_datetime)) {
+        return(raw_datetime)
+      }
+
+      if (any(!is.na(text_datetime))) {
+        return(text_datetime)
+      }
+
+      raw_datetime
+    }
 
     observeEvent(input$file, {
       shinyjs::enable("validate_infiltration")
@@ -107,7 +241,8 @@ mod_infiltration_analysis_server <- function(id) {
         showModal(modalDialog(
           size = "l",
           title = "Validation Error",
-          pre(paste(error_messages, collapse = "\n")),,
+          pre(paste(error_messages, collapse = "\n")),
+          ,
           easyClose = TRUE,
           footer = modalButton("Close")
         ))
@@ -124,7 +259,6 @@ mod_infiltration_analysis_server <- function(id) {
         shinyjs::enable("submit_infiltration")
       }
     })
-
 
     # When the user clicks "Submit", process all sheets via the API.
     observeEvent(input$submit_infiltration, {
@@ -156,17 +290,24 @@ mod_infiltration_analysis_server <- function(id) {
                     ns("choose_rain_event_infiltration"),
                     choices = NULL,
                     options = shinyWidgets::pickerOptions(
-                      container="body"
+                      container = "body"
                     )
                   ),
-                  shinyWidgets::downloadBttn(ns("download_plot_infiltration"), "Download this plot")
+                  shinyWidgets::downloadBttn(
+                    ns("download_plot_infiltration"),
+                    "Download this plot"
+                  )
                   #shinyWidgets::downloadBttn(ns("download_all_plots_infiltration"), "Download all plots")
                 )
               )
             ),
             bslib::card(
               bslib::card_header(
-                actionButton(ns("readme_btn"), "README", class = "btn-info btn-sm")
+                actionButton(
+                  ns("readme_btn"),
+                  "README",
+                  class = "btn-info btn-sm"
+                )
               ),
               bslib::card_body(
                 DT::dataTableOutput(ns("table_infiltration"))
@@ -174,8 +315,14 @@ mod_infiltration_analysis_server <- function(id) {
               bslib::card_footer(
                 bslib::layout_columns(
                   col_widths = c(6, 6),
-                  shinyWidgets::downloadBttn(ns("download_table_infiltration"), "Download table (SMC format)"),
-                  shinyWidgets::downloadBttn(ns("download_all_results_table"), "Download table for all results (SMC format)")
+                  shinyWidgets::downloadBttn(
+                    ns("download_table_infiltration"),
+                    "Download table (SMC format)"
+                  ),
+                  shinyWidgets::downloadBttn(
+                    ns("download_all_results_table"),
+                    "Download table for all results (SMC format)"
+                  )
                 )
               )
             )
@@ -188,9 +335,15 @@ mod_infiltration_analysis_server <- function(id) {
         modalDialog(
           title = "Calculating",
           tagList(
-            p("Please wait while we process the data. This might take a few minutes depending on your data size and the complexity of the algorithm."),
-            p("If the computation takes too long, your browser may time out. When this happens, the app will return with no error message but no result and no plot."),
-            p("If this happens, and your file contains many sensor columns, please try splitting the file into smaller parts by including fewer sensor columns per file, and submitting them one at a time to reduce processing time."),
+            p(
+              "Please wait while we process the data. This might take a few minutes depending on your data size and the complexity of the algorithm."
+            ),
+            p(
+              "If the computation takes too long, your browser may time out. When this happens, the app will return with no error message but no result and no plot."
+            ),
+            p(
+              "If this happens, and your file contains many sensor columns, please try splitting the file into smaller parts by including fewer sensor columns per file, and submitting them one at a time to reduce processing time."
+            ),
             p("Thank you for your patience while we process your data.")
           ),
           footer = NULL,
@@ -198,203 +351,304 @@ mod_infiltration_analysis_server <- function(id) {
         )
       )
 
-
-
       valid_data <- validatedData()
       results_list <- list()
 
       # Loop through each validated sheet.
       for (sheet in names(valid_data)) {
-        tryCatch({
-          data_df <- valid_data[[sheet]]
-          df <- data_df
+        tryCatch(
+          {
+            data_df <- valid_data[[sheet]]
+            df <- data_df
 
-
-          df$datetime <- as.character(as.POSIXct(df$datetime, tz = "UTC"))
-
-          # Use constants from the UI.
-          SMOOTHING_WINDOW <- 5
-          REGRESSION_WINDOW <- 720
-          REGRESSION_THRESHOLD <- 0.999
-
-          payload <- list(
-            data = df,
-            SMOOTHING_WINDOW = SMOOTHING_WINDOW,
-            REGRESSION_WINDOW = REGRESSION_WINDOW,
-            REGRESSION_THRESHOLD = REGRESSION_THRESHOLD
-          )
-
-          payload_json <- jsonlite::toJSON(payload, auto_unbox = TRUE, POSIXt = "ISO8601")
-          url <- "https://nexus.sccwrp.org/bmp_hydrology/api/infiltration"
-          response <- httr::POST(url,
-                                 body = payload_json,
-                                 encode = "json",
-                                 httr::content_type_json(),
-                                 config = httr::config(ssl_verifypeer = FALSE))
-
-          if (httr::status_code(response) != 200) {
-            results_list[[sheet]] <- list(error = paste("API request failed with status:", httr::status_code(response)))
-            next
-          }
-
-          result <- httr::content(response, "parsed")
-
-          ## Process the returned dataframe.
-          local_df <- jsonlite::fromJSON(jsonlite::toJSON(result$dataframe), flatten = TRUE)
-          local_df$datetime <- as.POSIXct(as.character(local_df$datetime), format = "%Y-%m-%dT%H:%M:%S")
-          local_df$datetime <- format(local_df$datetime, "%Y-%m-%d %H:%M:%S")
-
-
-          names(local_df) <- sub("\\..*$", "", names(local_df))
-
-          # Convert columns starting with "smooth_" to numeric.
-          smooth_cols <- grep("^smooth_", names(local_df), value = TRUE)
-          local_df[smooth_cols] <- lapply(local_df[smooth_cols], function(x) as.numeric(as.character(x)))
-
-          ## Reshape the smoothed columns for plotting.
-          df_long <- local_df |>
-            dplyr::select(datetime, dplyr::starts_with("smooth_")) |>
-            tidyr::pivot_longer(
-              cols = -datetime,
-              names_to = "piezometer",
-              values_to = "depth"
-            ) |>
-            dplyr::mutate(
-              depth = as.numeric(as.character(depth)),
-              piezometer = sub("^smooth_", "", piezometer)
+            uploaded_datetime <- read_uploaded_infiltration_datetime(
+              input$file$datapath,
+              sheet
             )
-          df_long$datetime <- as.POSIXct(df_long$datetime, format = "%Y-%m-%d %H:%M:%S", tz = "GMT")
+            if (!is.null(uploaded_datetime) &&
+                length(uploaded_datetime) == nrow(df) &&
+                any(!is.na(uploaded_datetime))) {
+              df$datetime <- uploaded_datetime
+            }
 
+            parsed_datetime <- parse_infiltration_datetime(df$datetime)
+            if (any(is.na(parsed_datetime))) {
+              bad_rows <- which(is.na(parsed_datetime))
+              stop(
+                "Unable to parse datetime values at row(s): ",
+                paste(head(bad_rows + 1, 10), collapse = ", ")
+              )
+            }
 
-          # --- NEW: depth-range check -----------------------------------------------
-          depth_range <- max(df_long$depth, na.rm = TRUE) - min(df_long$depth, na.rm = TRUE)
-
-          unit_selected <- input$depth_unit_infiltration
-          shallow_threshold <- switch(unit_selected,
-                                        "mm" = 2 * 25.4,   # 2 inches → mm
-                                        "cm" = 2 * 2.54,   # 2 inches → cm
-                                        "in" = 2,          # inches
-                                        2)                 # default fallback
-          shallow_flag <- depth_range < shallow_threshold
-          # -------------------------------------------------
-
-
-          ## Process best-fit line results.
-          calc_results <- result$calc_results
-          best_fit_df <- data.frame(
-            datetime = as.POSIXct(character()),
-            best_fit = numeric(),
-            piezometer = character(),
-            stringsAsFactors = FALSE
-          )
-          if (!is.null(calc_results)) {
-            for (piez in names(calc_results)) {
-              if (!is.null(calc_results[[piez]])) {
-                ext_time <- unlist(calc_results[[piez]]$extended_time)
-                ext_time <- as.POSIXct(ext_time, format = "%a, %d %b %Y %H:%M:%S GMT", tz = "GMT")
-                best_fit_line <- calc_results[[piez]]$best_fit_line
-                temp_df <- data.frame(
-                  datetime = ext_time,
-                  best_fit = as.numeric(unlist(best_fit_line)),
-                  piezometer = piez,
-                  stringsAsFactors = FALSE
+            clock_times <- unique(format(parsed_datetime, "%H:%M:%S", tz = "UTC"))
+            if (length(clock_times) == 1 &&
+                identical(clock_times, "00:00:00") &&
+                nrow(df) > 1) {
+              stop(
+                "Datetime values were read as date-only with no time component. ",
+                "First parsed values: ",
+                paste(
+                  utils::head(
+                    format(parsed_datetime, "%Y-%m-%d %H:%M:%S", tz = "UTC"),
+                    5
+                  ),
+                  collapse = " | "
                 )
-                best_fit_df <- rbind(best_fit_df, temp_df)
+              )
+            }
+
+            df$datetime <- format(
+              parsed_datetime,
+              "%Y-%m-%d %H:%M:%S",
+              tz = "UTC"
+            )
+
+            # Use constants from the UI.
+            SMOOTHING_WINDOW <- 5
+            REGRESSION_WINDOW <- 720
+            REGRESSION_THRESHOLD <- 0.999
+
+            payload <- list(
+              data = df,
+              SMOOTHING_WINDOW = SMOOTHING_WINDOW,
+              REGRESSION_WINDOW = REGRESSION_WINDOW,
+              REGRESSION_THRESHOLD = REGRESSION_THRESHOLD
+            )
+
+            payload_json <- jsonlite::toJSON(
+              payload,
+              auto_unbox = TRUE,
+              POSIXt = "ISO8601"
+            )
+            url <- "https://nexus.sccwrp.org/bmp_hydrology/api/infiltration"
+            response <- httr::POST(
+              url,
+              body = payload_json,
+              encode = "json",
+              httr::content_type_json(),
+              config = httr::config(ssl_verifypeer = FALSE)
+            )
+
+            if (httr::status_code(response) != 200) {
+              results_list[[sheet]] <- list(
+                error = paste(
+                  "API request failed with status:",
+                  httr::status_code(response)
+                )
+              )
+              next
+            }
+
+            result <- httr::content(response, "parsed")
+
+            ## Process the returned dataframe.
+            local_df <- jsonlite::fromJSON(
+              jsonlite::toJSON(result$dataframe),
+              flatten = TRUE
+            )
+            local_df$datetime <- as.POSIXct(
+              as.character(local_df$datetime),
+              format = "%Y-%m-%dT%H:%M:%S"
+            )
+            local_df$datetime <- format(local_df$datetime, "%Y-%m-%d %H:%M:%S")
+
+            names(local_df) <- sub("\\..*$", "", names(local_df))
+
+            # Convert columns starting with "smooth_" to numeric.
+            smooth_cols <- grep("^smooth_", names(local_df), value = TRUE)
+            local_df[smooth_cols] <- lapply(local_df[smooth_cols], function(x) {
+              as.numeric(as.character(x))
+            })
+
+            ## Reshape the smoothed columns for plotting.
+            df_long <- local_df |>
+              dplyr::select(datetime, dplyr::starts_with("smooth_")) |>
+              tidyr::pivot_longer(
+                cols = -datetime,
+                names_to = "piezometer",
+                values_to = "depth"
+              ) |>
+              dplyr::mutate(
+                depth = as.numeric(as.character(depth)),
+                piezometer = sub("^smooth_", "", piezometer)
+              )
+            df_long$datetime <- as.POSIXct(
+              df_long$datetime,
+              format = "%Y-%m-%d %H:%M:%S",
+              tz = "GMT"
+            )
+
+            # --- NEW: depth-range check -----------------------------------------------
+            depth_range <- max(df_long$depth, na.rm = TRUE) -
+              min(df_long$depth, na.rm = TRUE)
+
+            unit_selected <- input$depth_unit_infiltration
+            shallow_threshold <- switch(
+              unit_selected,
+              "mm" = 2 * 25.4, # 2 inches → mm
+              "cm" = 2 * 2.54, # 2 inches → cm
+              "in" = 2, # inches
+              2
+            ) # default fallback
+            shallow_flag <- depth_range < shallow_threshold
+            # -------------------------------------------------
+
+            ## Process best-fit line results.
+            calc_results <- result$calc_results
+            best_fit_df <- data.frame(
+              datetime = as.POSIXct(character()),
+              best_fit = numeric(),
+              piezometer = character(),
+              stringsAsFactors = FALSE
+            )
+            if (!is.null(calc_results)) {
+              for (piez in names(calc_results)) {
+                if (!is.null(calc_results[[piez]])) {
+                  ext_time <- unlist(calc_results[[piez]]$extended_time)
+                  ext_time <- as.POSIXct(
+                    ext_time,
+                    format = "%a, %d %b %Y %H:%M:%S GMT",
+                    tz = "GMT"
+                  )
+                  best_fit_line <- calc_results[[piez]]$best_fit_line
+                  temp_df <- data.frame(
+                    datetime = ext_time,
+                    best_fit = as.numeric(unlist(best_fit_line)),
+                    piezometer = piez,
+                    stringsAsFactors = FALSE
+                  )
+                  best_fit_df <- rbind(best_fit_df, temp_df)
+                }
               }
             }
-          }
 
-          ## Prepare a table of metrics.
-          metrics_list <- list()
-          if (!is.null(calc_results)) {
-            for (piez in names(calc_results)) {
-              if (!is.null(calc_results[[piez]])) {
-                metrics_list[[piez]] <- data.frame(
-                  Piezometer = piez,
-                  Infiltration_rate = round(calc_results[[piez]]$infiltration_rate, 2),
-                  Duration_hrs = round(calc_results[[piez]]$delta_x, 2),
-                  #Average_depth = round(calc_results[[piez]]$y_average, 2),
-                  stringsAsFactors = FALSE
-                )
+            ## Prepare a table of metrics.
+            metrics_list <- list()
+            if (!is.null(calc_results)) {
+              for (piez in names(calc_results)) {
+                if (!is.null(calc_results[[piez]])) {
+                  metrics_list[[piez]] <- data.frame(
+                    Piezometer = piez,
+                    Infiltration_rate = round(
+                      calc_results[[piez]]$infiltration_rate,
+                      2
+                    ),
+                    Duration_hrs = round(calc_results[[piez]]$delta_x, 2),
+                    #Average_depth = round(calc_results[[piez]]$y_average, 2),
+                    stringsAsFactors = FALSE
+                  )
+                }
               }
             }
-          }
-          metrics_df <- do.call(rbind, metrics_list)
+            metrics_df <- do.call(rbind, metrics_list)
 
-          ### **Validation Checks for `best_fit_df` and `metrics_df`**
-          if (nrow(best_fit_df) == 0 || any(is.infinite(best_fit_df$best_fit)) ||
-              is.null(metrics_df) || nrow(metrics_df) == 0 || any(is.infinite(metrics_df$Infiltration_rate))) {
+            ### **Validation Checks for `best_fit_df` and `metrics_df`**
+            if (
+              nrow(best_fit_df) == 0 ||
+                any(is.infinite(best_fit_df$best_fit)) ||
+                is.null(metrics_df) ||
+                nrow(metrics_df) == 0 ||
+                any(is.infinite(metrics_df$Infiltration_rate))
+            ) {
+              showModal(modalDialog(
+                title = "Unable to Calculate Infiltration Rate",
+                paste(
+                  "Unable to calculate infiltration rate for this sheet:",
+                  sheet
+                ),
+                easyClose = TRUE,
+                footer = modalButton("Close")
+              ))
 
+              next # **Skip adding this sheet to results_list and selectInput**
+            }
+
+            # Check if there are any -88 values in best_fit
+            has_undetermined <- any(best_fit_df$best_fit == -88)
+            if (has_undetermined) {
+              metrics_df$Infiltration_rate <- "Insufficient data to determine infiltration rate. Infiltration must occur over at least 1-hr."
+            }
+
+            # Create base plot
+            df_long$piezometer <- gsub("_", " ", df_long$piezometer)
+
+            p <- ggplot2::ggplot() +
+              ggplot2::geom_line(
+                data = df_long,
+                ggplot2::aes(
+                  x = datetime,
+                  y = depth,
+                  color = paste("Original Data", piezometer)
+                ),
+                size = 1.5
+              )
+
+            # Add dummy line to include "Regression Fits undetermined" in legend if needed
+            if (has_undetermined) {
+              p <- p +
+                ggplot2::geom_line(
+                  data = data.frame(
+                    datetime = as.POSIXct(NA),
+                    best_fit = as.numeric(NA) # Ensures this is treated as numeric
+                  ),
+                  ggplot2::aes(
+                    x = datetime,
+                    y = best_fit,
+                    color = "Regression Fits Undetermined. Inf values detected"
+                  ),
+                  linetype = "dashed"
+                )
+            } else {
+              p <- p +
+                ggplot2::geom_line(
+                  data = best_fit_df,
+                  ggplot2::aes(
+                    x = datetime,
+                    y = best_fit,
+                    color = paste("Regression Fits", piezometer)
+                  ),
+                  linetype = "dashed",
+                  size = 1.5
+                )
+            }
+
+            # Finalize plot with labels
+            p <- p +
+              ggplot2::labs(
+                title = sheet,
+                x = "Datetime",
+                y = paste(
+                  "Depth (",
+                  input$depth_unit_infiltration,
+                  ")",
+                  sep = ""
+                ),
+                color = "Piezometer"
+              )
+
+            # Store the result for this sheet.
+            results_list[[sheet]] <- list(
+              plot = p,
+              table = metrics_df,
+              best_fit_df = best_fit_df
+            )
+          },
+          error = function(e) {
+            # Display an error modal if something goes wrong.
             showModal(modalDialog(
-              title = "Unable to Calculate Infiltration Rate",
-              paste("Unable to calculate infiltration rate for this sheet:", sheet),
+              title = paste(
+                "Unable to determine the infiltration rate for sheet:",
+                sheet
+              ),
+              paste("Details:", e$message),
               easyClose = TRUE,
               footer = modalButton("Close")
             ))
-
-            next  # **Skip adding this sheet to results_list and selectInput**
-          }
-
-          # Check if there are any -88 values in best_fit
-          has_undetermined <- any(best_fit_df$best_fit == -88)
-          if (has_undetermined) {
-            metrics_df$Infiltration_rate <- "Insufficient data to determine infiltration rate. Infiltration must occur over at least 1-hr."
-          }
-
-          # Create base plot
-          df_long$piezometer <- gsub("_", " ", df_long$piezometer)
-
-          p <- ggplot2::ggplot() +
-            ggplot2::geom_line(
-              data = df_long,
-              ggplot2::aes(x = datetime, y = depth, color = paste("Original Data", piezometer)),
-              size = 1.5
+            results_list[[sheet]] <- list(
+              error = paste("An error occurred:", e$message)
             )
-
-          # Add dummy line to include "Regression Fits undetermined" in legend if needed
-          if (has_undetermined) {
-            p <- p +
-              ggplot2::geom_line(
-                data = data.frame(
-                  datetime = as.POSIXct(NA),
-                  best_fit = as.numeric(NA)  # Ensures this is treated as numeric
-                ),
-                ggplot2::aes(x = datetime, y = best_fit, color = "Regression Fits Undetermined. Inf values detected"),
-                linetype = "dashed"
-              )
-          } else {
-            p <- p +
-              ggplot2::geom_line(
-                data = best_fit_df,
-                ggplot2::aes(x = datetime, y = best_fit, color = paste("Regression Fits", piezometer)),
-                linetype = "dashed",
-                size = 1.5
-              )
           }
-
-
-          # Finalize plot with labels
-          p <- p +
-            ggplot2::labs(
-              title = sheet,
-              x = "Datetime",
-              y = paste("Depth (", input$depth_unit_infiltration, ")", sep = ""),
-              color = "Piezometer"
-            )
-
-          # Store the result for this sheet.
-          results_list[[sheet]] <- list(plot = p, table = metrics_df, best_fit_df = best_fit_df )
-
-        }, error = function(e) {
-          # Display an error modal if something goes wrong.
-          showModal(modalDialog(
-            title = paste("Unable to determine the infiltration rate for sheet:", sheet),
-            paste("Details:", e$message),
-            easyClose = TRUE,
-            footer = modalButton("Close")
-          ))
-          results_list[[sheet]] <- list(error = paste("An error occurred:", e$message))
-        })
+        )
       }
 
       # Save all analysis results.
@@ -402,13 +656,16 @@ mod_infiltration_analysis_server <- function(id) {
 
       # Update the dropdown with only successfully processed sheets.
       sheets <- names(results_list)
-      shinyWidgets::updatePickerInput(session, "choose_rain_event_infiltration",
-                        choices = sheets, selected = if (length(sheets) > 0) sheets[1] else NULL)
+      shinyWidgets::updatePickerInput(
+        session,
+        "choose_rain_event_infiltration",
+        choices = sheets,
+        selected = if (length(sheets) > 0) sheets[1] else NULL
+      )
 
       updateNavbarPage(session, "main_infiltration", selected = "Result")
 
-      removeModal()  # Remove the "Calculating" modal.
-
+      removeModal() # Remove the "Calculating" modal.
     })
 
     # README button modal
@@ -463,8 +720,14 @@ mod_infiltration_analysis_server <- function(id) {
       content = function(file) {
         thematic::thematic_local_theme(
           thematic::thematic_theme(
-            bg = bslib::bs_get_contrast(bslib::bs_theme(preset = "cosmo"), "secondary"),
-            fg = bslib::bs_get_variables(bslib::bs_theme(preset = "cosmo"), "secondary")
+            bg = bslib::bs_get_contrast(
+              bslib::bs_theme(preset = "cosmo"),
+              "secondary"
+            ),
+            fg = bslib::bs_get_variables(
+              bslib::bs_theme(preset = "cosmo"),
+              "secondary"
+            )
           )
         )
 
@@ -476,7 +739,6 @@ mod_infiltration_analysis_server <- function(id) {
           units = "px",
           dpi = 93
         )
-
       }
     )
     output$download_plot_infiltration <- downloadHandler(
@@ -486,16 +748,28 @@ mod_infiltration_analysis_server <- function(id) {
       content = function(file) {
         thematic::thematic_local_theme(
           thematic::thematic_theme(
-            bg = bslib::bs_get_contrast(bslib::bs_theme(preset = "cosmo"), "secondary"),
-            fg = bslib::bs_get_variables(bslib::bs_theme(preset = "cosmo"), "secondary")
+            bg = bslib::bs_get_contrast(
+              bslib::bs_theme(preset = "cosmo"),
+              "secondary"
+            ),
+            fg = bslib::bs_get_variables(
+              bslib::bs_theme(preset = "cosmo"),
+              "secondary"
+            )
           )
         )
-        ggplot2::ggsave(file, plot = selected_result()$plot + theme_bw(base_size = 30) + theme(
-          axis.text.x = element_text(size = 25)
-        ), width = 1920,
-                        height = 1441,
-                        units = "px",
-                        dpi = 93)
+        ggplot2::ggsave(
+          file,
+          plot = selected_result()$plot +
+            theme_bw(base_size = 30) +
+            theme(
+              axis.text.x = element_text(size = 25)
+            ),
+          width = 1920,
+          height = 1441,
+          units = "px",
+          dpi = 93
+        )
       }
     )
     output$download_all_plots_infiltration <- downloadHandler(
@@ -518,8 +792,14 @@ mod_infiltration_analysis_server <- function(id) {
           if (is.null(res$error)) {
             thematic::thematic_local_theme(
               thematic::thematic_theme(
-                bg = bslib::bs_get_contrast(bslib::bs_theme(preset = "cosmo"), "secondary"),
-                fg = bslib::bs_get_variables(bslib::bs_theme(preset = "cosmo"), "secondary")
+                bg = bslib::bs_get_contrast(
+                  bslib::bs_theme(preset = "cosmo"),
+                  "secondary"
+                ),
+                fg = bslib::bs_get_variables(
+                  bslib::bs_theme(preset = "cosmo"),
+                  "secondary"
+                )
               )
             )
 
@@ -531,7 +811,6 @@ mod_infiltration_analysis_server <- function(id) {
               units = "px",
               dpi = 93
             )
-
           } else {
             # Optionally, create a placeholder image for sheets with errors.
             png(png_file, width = 9.2302 * 100, height = 6.94 * 100)
@@ -590,8 +869,8 @@ mod_infiltration_analysis_server <- function(id) {
       }
 
       # 2 ── Base data and unit ─────────────────────────────────────────
-      dt   <- res$table            # metrics_df
-      bf   <- res$best_fit_df      # per-sheet best-fit lines
+      dt <- res$table # metrics_df
+      bf <- res$best_fit_df # per-sheet best-fit lines
       unit <- input$depth_unit_infiltration
 
       # 3 ── Depth-range QA/QC per piezometer (no separate column) ─────
@@ -600,26 +879,34 @@ mod_infiltration_analysis_server <- function(id) {
         if (length(vals) == 0) NA_real_ else diff(range(vals, na.rm = TRUE))
       })
 
-      depth_thresh <- switch(                   # 2-inch threshold in chosen unit
-        unit, "mm" = 2 * 25.4,
+      depth_thresh <- switch(
+        # 2-inch threshold in chosen unit
+        unit,
+        "mm" = 2 * 25.4,
         "cm" = 2 * 2.54,
         "in" = 2,
         2
       )
 
-      depth_thresh_disp <- round(depth_thresh, 2)          # threshold in chosen unit
+      depth_thresh_disp <- round(depth_thresh, 2) # threshold in chosen unit
 
       dt$depth_qaqc <- ifelse(
         depth_range_raw < depth_thresh,
-        paste0("Warning: Infiltration rate calculated from shallow ponding depth (observed range = ",
-               round(depth_range_raw, 2), " ", unit, ")"),
+        paste0(
+          "Warning: Infiltration rate calculated from shallow ponding depth (observed range = ",
+          round(depth_range_raw, 2),
+          " ",
+          unit,
+          ")"
+        ),
         "OK"
       )
 
       # 4 ── Infiltration-rate QA/QC ────────────────────────────────────
-      ir_thresh_in <- 150                               # inches hr⁻¹ baseline
+      ir_thresh_in <- 150 # inches hr⁻¹ baseline
       ir_thresh <- switch(
-        unit, "mm" = ir_thresh_in * 25.4,
+        unit,
+        "mm" = ir_thresh_in * 25.4,
         "cm" = ir_thresh_in * 2.54,
         "in" = ir_thresh_in,
         ir_thresh_in
@@ -648,14 +935,19 @@ mod_infiltration_analysis_server <- function(id) {
       )
 
       # 5 ── Rename / arrange columns (Depth-Range column omitted) ──────
-      dt <- dt %>% dplyr::select(-Duration_hrs)   # ← hide Duration for now
+      dt <- dt %>% dplyr::select(-Duration_hrs) # ← hide Duration for now
 
       col_map <- c(
-        "Piezometer"             = "Piezometer",
-        "Infiltration_rate"      = paste("Infiltration Rate (", unit, "/hr)", sep = ""),
+        "Piezometer" = "Piezometer",
+        "Infiltration_rate" = paste(
+          "Infiltration Rate (",
+          unit,
+          "/hr)",
+          sep = ""
+        ),
         # "Duration_hrs"         = "Duration (hr)",   # ← commented-out
         "infiltration_rate_qaqc" = "Infiltration Rate QAQC",
-        "depth_qaqc"             = "Depth QAQC"
+        "depth_qaqc" = "Depth QAQC"
       )
       names(dt) <- vapply(
         names(dt),
@@ -663,19 +955,18 @@ mod_infiltration_analysis_server <- function(id) {
         character(1)
       )
 
-
       # 6 ── Render with colour cues ────────────────────────────────────
       depth_values <- unique(dt$`Depth QAQC`)
       depth_colors <- ifelse(
         depth_values == "OK",
-        "lightgreen",   # OK → green
-        "yellow"        # warnings → orange
+        "lightgreen", # OK → green
+        "yellow" # warnings → orange
       )
 
       DT::datatable(
         dt,
         rownames = FALSE,
-        options  = list(dom = "t", paging = FALSE, ordering = FALSE)
+        options = list(dom = "t", paging = FALSE, ordering = FALSE)
       ) %>%
         DT::formatStyle(
           "Infiltration Rate QAQC",
@@ -693,20 +984,17 @@ mod_infiltration_analysis_server <- function(id) {
             depth_colors
           )
         )
-
     })
     # --------------------------------------------------------------------
-
 
     # Individual-storm table  ── includes sheetname
     # ── Download: individual storm (QA code populated) ─────────────────────────
     output$download_table_infiltration <- downloadHandler(
       filename = function() paste0("infiltration_table_", Sys.Date(), ".csv"),
-      content  = function(file) {
-
-        res  <- selected_result()                      # plot/table/best_fit_df for this sheet
-        dt   <- res$table
-        bf   <- res$best_fit_df
+      content = function(file) {
+        res <- selected_result() # plot/table/best_fit_df for this sheet
+        dt <- res$table
+        bf <- res$best_fit_df
         unit <- input$depth_unit_infiltration
 
         ## ── depth-range check -------------------------------------------------
@@ -714,29 +1002,41 @@ mod_infiltration_analysis_server <- function(id) {
           vals <- bf$best_fit[bf$piezometer == pz]
           if (length(vals) == 0) NA_real_ else diff(range(vals, na.rm = TRUE))
         })
-        depth_thresh <- switch(unit, "mm" = 2*25.4, "cm" = 2*2.54, "in" = 2, 2)
-        depth_fail   <- depth_range_raw < depth_thresh | is.na(depth_range_raw)
+        depth_thresh <- switch(
+          unit,
+          "mm" = 2 * 25.4,
+          "cm" = 2 * 2.54,
+          "in" = 2,
+          2
+        )
+        depth_fail <- depth_range_raw < depth_thresh | is.na(depth_range_raw)
 
         ## ── infiltration-rate check ------------------------------------------
         ir_thresh_in <- 150
-        ir_in_in <- suppressWarnings(as.numeric(dt$Infiltration_rate) /
-                                       switch(unit, "mm" = 25.4, "cm" = 2.54, "in" = 1, 1))
-        rate_fail  <- is.na(ir_in_in) | ir_in_in >= ir_thresh_in
+        ir_in_in <- suppressWarnings(
+          as.numeric(dt$Infiltration_rate) /
+            switch(unit, "mm" = 25.4, "cm" = 2.54, "in" = 1, 1)
+        )
+        rate_fail <- is.na(ir_in_in) | ir_in_in >= ir_thresh_in
 
         ## ── derive QA code ----------------------------------------------------
         dt$infiltrationqacode <- ifelse(
-          !depth_fail & !rate_fail, "OK",
-          ifelse(!depth_fail &  rate_fail, "H",
-                 ifelse( depth_fail & !rate_fail, "DL", "HDL"))
+          !depth_fail & !rate_fail,
+          "OK",
+          ifelse(
+            !depth_fail & rate_fail,
+            "H",
+            ifelse(depth_fail & !rate_fail, "DL", "HDL")
+          )
         )
 
         ## ── final export frame -----------------------------------------------
         export <- dt %>%
           transmute(
-            sheetname              = input$choose_rain_event_infiltration,
-            piezometer             = Piezometer,
-            infiltrationrate       = Infiltration_rate,
-            infiltrationrateunits  = paste0(unit, "/hr"),
+            sheetname = input$choose_rain_event_infiltration,
+            piezometer = Piezometer,
+            infiltrationrate = Infiltration_rate,
+            infiltrationrateunits = paste0(unit, "/hr"),
             infiltrationqacode
           )
 
@@ -744,21 +1044,27 @@ mod_infiltration_analysis_server <- function(id) {
       }
     )
 
-
-
-
     # Combined-results table  ── includes sheetname
     output$download_all_results_table <- downloadHandler(
-      filename = function() paste0("infiltration_table_", Sys.Date(), "_ALL.csv"),
-      content  = function(file) {
-
-        unit     <- input$depth_unit_infiltration
+      filename = function() {
+        paste0("infiltration_table_", Sys.Date(), "_ALL.csv")
+      },
+      content = function(file) {
+        unit <- input$depth_unit_infiltration
         ir_thresh_in <- 150
-        depth_thresh <- switch(unit, "mm" = 2*25.4, "cm" = 2*2.54, "in" = 2, 2)
+        depth_thresh <- switch(
+          unit,
+          "mm" = 2 * 25.4,
+          "cm" = 2 * 2.54,
+          "in" = 2,
+          2
+        )
 
         rows <- lapply(names(analysisResults()), function(sheet) {
           res <- analysisResults()[[sheet]]
-          if (!is.null(res$error)) return(NULL)
+          if (!is.null(res$error)) {
+            return(NULL)
+          }
 
           dt <- res$table
           bf <- res$best_fit_df
@@ -771,24 +1077,30 @@ mod_infiltration_analysis_server <- function(id) {
           depth_fail <- depth_range_raw < depth_thresh | is.na(depth_range_raw)
 
           ## infiltration-rate check
-          ir_in_in <- suppressWarnings(as.numeric(dt$Infiltration_rate) /
-                                         switch(unit, "mm" = 25.4, "cm" = 2.54, "in" = 1, 1))
+          ir_in_in <- suppressWarnings(
+            as.numeric(dt$Infiltration_rate) /
+              switch(unit, "mm" = 25.4, "cm" = 2.54, "in" = 1, 1)
+          )
           rate_fail <- is.na(ir_in_in) | ir_in_in >= ir_thresh_in
 
           ## QA code
           qacode <- ifelse(
-            !depth_fail & !rate_fail, "OK",
-            ifelse(!depth_fail &  rate_fail, "H",
-                   ifelse( depth_fail & !rate_fail, "DL", "HDL"))
+            !depth_fail & !rate_fail,
+            "OK",
+            ifelse(
+              !depth_fail & rate_fail,
+              "H",
+              ifelse(depth_fail & !rate_fail, "DL", "HDL")
+            )
           )
 
           dt %>%
             transmute(
-              sheetname              = sheet,
-              piezometer             = Piezometer,
-              infiltrationrate       = Infiltration_rate,
-              infiltrationrateunits  = paste0(unit, "/hr"),
-              infiltrationqacode     = qacode
+              sheetname = sheet,
+              piezometer = Piezometer,
+              infiltrationrate = Infiltration_rate,
+              infiltrationrateunits = paste0(unit, "/hr"),
+              infiltrationqacode = qacode
             )
         })
 
@@ -796,10 +1108,5 @@ mod_infiltration_analysis_server <- function(id) {
         readr::write_csv(export, file)
       }
     )
-
-
-
-
-
   })
 }
