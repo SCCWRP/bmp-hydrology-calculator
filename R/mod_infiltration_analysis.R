@@ -44,7 +44,20 @@ mod_infiltration_analysis_ui <- function(id) {
       )
     ),
     bslib::tooltip(
-      span(strong("Step 4: Submit data"), bsicons::bs_icon("question-circle")),
+      span(strong("Step 4: Set regression threshold (R²)"), bsicons::bs_icon("question-circle")),
+      "Adjust the R² threshold for regression fit. Higher values require tighter fit but may result in shorter analysis periods."
+    ),
+    shinyjs::disabled(
+      selectInput(
+        ns("regression_threshold"),
+        "Regression Threshold (R²)",
+        choices = c("0.9", "0.95", "0.99", "0.995", "0.999"),
+        selected = "0.999",
+        width = "100%"
+      )
+    ),
+    bslib::tooltip(
+      span(strong("Step 5: Submit data"), bsicons::bs_icon("question-circle")),
       "Submit data when validation is successful."
     ),
     shinyjs::disabled(shinyWidgets::actionBttn(ns("submit_infiltration"), "Submit")),
@@ -86,6 +99,7 @@ mod_infiltration_analysis_server <- function(id) {
     observeEvent(input$file, {
       shinyjs::enable("validate_infiltration")
       shinyjs::enable("depth_unit_infiltration")
+      shinyjs::enable("regression_threshold")
     })
 
     observeEvent(input$validate_infiltration, {
@@ -215,7 +229,7 @@ mod_infiltration_analysis_server <- function(id) {
           # Use constants from the UI.
           SMOOTHING_WINDOW <- 5
           REGRESSION_WINDOW <- 720
-          REGRESSION_THRESHOLD <- 0.999
+          REGRESSION_THRESHOLD <- as.numeric(input$regression_threshold)
 
           payload <- list(
             data = df,
@@ -613,7 +627,7 @@ mod_infiltration_analysis_server <- function(id) {
         depth_range_raw < depth_thresh,
         paste0("Warning: Infiltration rate calculated from shallow ponding depth (observed range = ",
                round(depth_range_raw, 2), " ", unit, ")"),
-        "OK"
+        paste0("OK " ,round(depth_range_raw, 2))
       )
 
       # 4 ── Infiltration-rate QA/QC ────────────────────────────────────
@@ -796,10 +810,6 @@ mod_infiltration_analysis_server <- function(id) {
         readr::write_csv(export, file)
       }
     )
-
-
-
-
 
   })
 }

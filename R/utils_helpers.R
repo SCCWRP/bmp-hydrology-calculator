@@ -154,6 +154,13 @@ validate_infiltration_file <- function(file_path) {
       next
     }
 
+    # Check for duplicates in "datetime"
+    if (any(duplicated(data_df$datetime))) {
+      errors <- c(errors, paste("The 'datetime' column must not contain duplicate values."))
+      error_report[[sheet]] <- errors
+      next
+    }
+
     # Coerce to character in case it's not
     datetime_vals <- as.character(data_df$datetime)
     datetime_vals <- ifelse(
