@@ -599,9 +599,16 @@ mod_infiltration_analysis_server <- function(id) {
                   linetype = "dashed"
                 )
             } else {
+              # Skip the regression line for piezometers with a 0 infiltration rate
+              zero_rate_pz <- metrics_df$Piezometer[
+                suppressWarnings(as.numeric(metrics_df$Infiltration_rate)) == 0
+              ]
+              plot_fit_df <- best_fit_df[
+                !best_fit_df$piezometer %in% zero_rate_pz,
+              ]
               p <- p +
                 ggplot2::geom_line(
-                  data = best_fit_df,
+                  data = plot_fit_df,
                   ggplot2::aes(
                     x = datetime,
                     y = best_fit,
@@ -972,8 +979,8 @@ mod_infiltration_analysis_server <- function(id) {
           "Infiltration Rate QAQC",
           target = "cell",
           backgroundColor = DT::styleEqual(
-            c("OK", paste0("Exceeds ", ir_lbl), "Insufficient data"),
-            c("lightgreen", "yellow", "lightgrey")
+            c(paste0("Exceeds ", ir_lbl), "Insufficient data"),
+            c("yellow", "lightgrey")
           )
         ) %>%
         DT::formatStyle(
